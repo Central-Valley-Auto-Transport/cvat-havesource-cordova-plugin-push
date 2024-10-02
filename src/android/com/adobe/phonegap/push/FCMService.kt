@@ -1,7 +1,9 @@
 package com.adobe.phonegap.push
 
+import android.R
 import android.annotation.SuppressLint
 import android.app.Notification
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ContentResolver
@@ -9,9 +11,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.*
+import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.text.Spanned
 import android.util.Log
@@ -22,6 +26,7 @@ import com.adobe.phonegap.push.PushPlugin.Companion.isActive
 import com.adobe.phonegap.push.PushPlugin.Companion.isInForeground
 import com.adobe.phonegap.push.PushPlugin.Companion.sendExtras
 import com.adobe.phonegap.push.PushPlugin.Companion.setApplicationIconBadgeNumber
+import com.cvat.sbols.MainActivity
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import org.json.JSONArray
@@ -33,6 +38,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.SecureRandom
 import java.util.*
+
 
 /**
  * Firebase Cloud Messaging Service Class
@@ -108,6 +114,31 @@ class FCMService : FirebaseMessagingService() {
     }
   }
 
+  private fun wakeUpDevice(context: Context) {
+    Log.d(TAG, "wakeUpDevice called")
+    val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+
+    // Create a wake lock to wake up the device
+    val wakeLock = powerManager.newWakeLock(
+      PowerManager.FULL_WAKE_LOCK or
+        PowerManager.ACQUIRE_CAUSES_WAKEUP or
+        PowerManager.ON_AFTER_RELEASE,
+      "MyApp::WakeUpTag"
+    )
+    wakeLock.acquire(10 * 60 * 1000L /* 10 minutes */)
+    Log.d(TAG, "wakeUpDevice DONE");
+  }
+
+  fun createNotificationChannel(context: Context, channelId: String?, channelName: String?) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      val notificationManager =
+        context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+      val channel =
+        NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_DEFAULT)
+      notificationManager.createNotificationChannel(channel)
+    }
+  }
+
   /**
    * On Message Received
    */
@@ -115,11 +146,47 @@ class FCMService : FirebaseMessagingService() {
     val from = message.from
     Log.d(TAG, "onMessageReceived (from=$from)")
 
+    wakeUpDevice(context);
+
+    val jsonPayloadString = message.data["jsonPayload"] ?: "{}"
+    var myTitle = "CVAT Notification"
+    var myMessage = ""
+    try {
+      // Parse the jsonPayload string into a JSONObject
+      val jsonObject = JSONObject(jsonPayloadString)
+      myTitle = jsonObject.optString("title", "CVAT Notification")
+      myMessage = jsonObject.optString("body", "")
+    }catch(e:Exception){}
+
+    Log.d(TAG, "onMessageReceived (from=$from)")
+
+
+    val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    val channelId = "fcm_default_channel"
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      val soundUri = Uri.parse("android.resource://" + packageName + "/" + com.cvat.sbols.R.raw.car_horn)
+      val channelName = "My notification channel"
+      val importance = NotificationManager.IMPORTANCE_HIGH
+      val notificationChannel = NotificationChannel(channelId, channelName, importance)
+      notificationChannel.description = "General Notifications"
+      notificationChannel.enableLights(true)
+      notificationChannel.enableVibration(true)
+      val audioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+        .build()
+      notificationChannel.setSound(soundUri, audioAttributes)
+      //val notificationManager = getSystemService(NotificationManager::class.java)
+      notificationManager.createNotificationChannel(notificationChannel)
+    }
+
+    val intent = Intent(this, MainActivity::class.java)
+
     var extras = Bundle()
 
     message.notification?.let {
-      extras.putString(PushConstants.TITLE, it.title)
-      extras.putString(PushConstants.MESSAGE, it.body)
+      extras.putString(PushConstants.TITLE, myTitle)
+      extras.putString(PushConstants.MESSAGE, myMessage)
       extras.putString(PushConstants.SOUND, it.sound)
       extras.putString(PushConstants.ICON, it.icon)
       extras.putString(PushConstants.COLOR, it.color)
@@ -160,6 +227,27 @@ class FCMService : FirebaseMessagingService() {
         showNotificationIfPossible(extras)
       }
     }
+    //intent.putExtras(extras);
+    val pendingIntent: PendingIntent = PendingIntent.getActivity(
+      context,
+      0,  // Request code
+      intent,
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE  // Update if the intent changes
+    )
+
+    // Build the notification
+    val notificationBuilder: NotificationCompat.Builder = NotificationCompat.Builder(
+      this, channelId
+    ).setSmallIcon(com.cvat.sbols.R.mipmap.ic_launcher) // Set your app's small icon
+      .setContentTitle(myTitle)
+      .setContentText(myMessage)
+      .setAutoCancel(true)
+      .setContentIntent(pendingIntent)
+      .setPriority(NotificationCompat.PRIORITY_HIGH) // High priority for sound and heads-up
+
+
+    // Show the notification
+    notificationManager.notify(0, notificationBuilder.build())
   }
 
   private fun replaceKey(oldKey: String, newKey: String, extras: Bundle, newExtras: Bundle) {
@@ -906,12 +994,13 @@ class FCMService : FirebaseMessagingService() {
           setNotification(notId, "")
 
           message?.let { messageStr ->
-            val bigText = NotificationCompat.BigTextStyle()
-              .bigText(fromHtml(messageStr))
-              .setBigContentTitle(fromHtml(it.getString(PushConstants.TITLE)))
+            val bigText = NotificationCompat.BigTextStyle().run {
+              bigText(fromHtml(messageStr))
+              setBigContentTitle(fromHtml(it.getString(PushConstants.TITLE)))
 
-            it.getString(PushConstants.SUMMARY_TEXT)?.let { summaryText ->
-              bigText.setSummaryText(fromHtml(summaryText))
+              it.getString(PushConstants.SUMMARY_TEXT)?.let { summaryText ->
+                setSummaryText(fromHtml(summaryText))
+              }
             }
 
             mBuilder.setContentText(fromHtml(messageStr))
@@ -1194,4 +1283,6 @@ class FCMService : FirebaseMessagingService() {
     Log.d(TAG, "sender id = $savedSenderID")
     return from == savedSenderID || from!!.startsWith("/topics/")
   }
+
+
 }

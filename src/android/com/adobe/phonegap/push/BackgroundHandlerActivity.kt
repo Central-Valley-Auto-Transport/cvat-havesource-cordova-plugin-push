@@ -3,10 +3,12 @@ package com.adobe.phonegap.push
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.core.app.RemoteInput
+import android.os.PowerManager
 
 /**
  * Background Handler Activity
@@ -30,6 +32,8 @@ class BackgroundHandlerActivity : Activity() {
   public override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
+    wakeUpDevice(applicationContext)
+
     Log.v(TAG, "onCreate")
 
     intent.extras?.let { extras ->
@@ -51,6 +55,9 @@ class BackgroundHandlerActivity : Activity() {
       }
 
       processPushBundle()
+
+
+
       finish()
 
       if (!dismissed) {
@@ -62,6 +69,19 @@ class BackgroundHandlerActivity : Activity() {
         }
       }
     }
+  }
+
+  fun wakeUpDevice(context: Context) {
+    val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+
+    // Create a wake lock to wake up the device
+    val wakeLock = powerManager.newWakeLock(
+      PowerManager.FULL_WAKE_LOCK or
+        PowerManager.ACQUIRE_CAUSES_WAKEUP or
+        PowerManager.ON_AFTER_RELEASE,
+      "MyApp::WakeUpTag"
+    )
+    wakeLock.acquire(10 * 60 * 1000L /* 10 minutes */)
   }
 
   private fun processPushBundle() {
