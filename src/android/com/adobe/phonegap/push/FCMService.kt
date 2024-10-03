@@ -160,22 +160,43 @@ class FCMService : FirebaseMessagingService() {
 
     Log.d(TAG, "onMessageReceived (from=$from)")
 
-
+    val sharedPref = applicationContext.getSharedPreferences(
+      PushConstants.COM_ADOBE_PHONEGAP_PUSH,
+      Context.MODE_PRIVATE
+    )
+    var isSound = sharedPref.getBoolean(PushConstants.SOUND, true)
     val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
     val channelId = "fcm_default_channel"
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      val soundUri = Uri.parse("android.resource://" + packageName + "/" + com.cvat.sbols.R.raw.car_horn)
       val channelName = "My notification channel"
       val importance = NotificationManager.IMPORTANCE_HIGH
       val notificationChannel = NotificationChannel(channelId, channelName, importance)
       notificationChannel.description = "General Notifications"
       notificationChannel.enableLights(true)
       notificationChannel.enableVibration(true)
-      val audioAttributes = AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-        .build()
-      notificationChannel.setSound(soundUri, audioAttributes)
+      val sound = message.data["sound"]
+      Log.d(TAG, "onMessageReceived isSound = $isSound")
+      Log.d(TAG, "onMessageReceived sound = $sound")
+      if(isSound==true && sound!=null) {
+        var soundUri = Uri.parse("")
+        if(sound == PushConstants.SOUND_RINGTONE) {
+          soundUri = Settings.System.DEFAULT_RINGTONE_URI
+        }else if(sound == PushConstants.SOUND_DEFAULT){
+          soundUri = Settings.System.DEFAULT_NOTIFICATION_URI
+        }else{
+          Log.d(TAG, "onMessageReceived setting sound to be car_horn... ")
+          soundUri = Uri.parse("android.resource://" + packageName + "/" + com.cvat.sbols.R.raw.car_horn)
+        }
+        val audioAttributes = AudioAttributes.Builder()
+          .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+          .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+          .build()
+        Log.d(TAG, "onMessageReceived setting sound to be played on notification channel")
+        notificationChannel.setSound(soundUri, audioAttributes)
+      }else{
+        Log.d(TAG, "onMessageReceived setting sound to NOT be played on notification channel")
+        notificationChannel.setSound(null, null)
+      }
       //val notificationManager = getSystemService(NotificationManager::class.java)
       notificationManager.createNotificationChannel(notificationChannel)
     }
@@ -230,24 +251,25 @@ class FCMService : FirebaseMessagingService() {
     //intent.putExtras(extras);
     val pendingIntent: PendingIntent = PendingIntent.getActivity(
       context,
-      0,  // Request code
+      0,
       intent,
-      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE  // Update if the intent changes
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
     // Build the notification
     val notificationBuilder: NotificationCompat.Builder = NotificationCompat.Builder(
       this, channelId
-    ).setSmallIcon(com.cvat.sbols.R.mipmap.ic_launcher) // Set your app's small icon
+    ).setSmallIcon(com.cvat.sbols.R.mipmap.ic_launcher)
       .setContentTitle(myTitle)
       .setContentText(myMessage)
       .setAutoCancel(true)
       .setContentIntent(pendingIntent)
-      .setPriority(NotificationCompat.PRIORITY_HIGH) // High priority for sound and heads-up
+      .setPriority(NotificationCompat.PRIORITY_HIGH)
+      .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
 
     // Show the notification
-    notificationManager.notify(0, notificationBuilder.build())
+    notificationManager.notify(1, notificationBuilder.build())
   }
 
   private fun replaceKey(oldKey: String, newKey: String, extras: Bundle, newExtras: Bundle) {
@@ -494,7 +516,7 @@ class FCMService : FirebaseMessagingService() {
       val contentAvailable = it.getString(PushConstants.CONTENT_AVAILABLE)
       val forceStart = it.getString(PushConstants.FORCE_START)
       val badgeCount = extractBadgeCount(extras)
-
+      Log.d(TAG, "showNotificationIfPossible forceStart = $forceStart")
       if (badgeCount >= 0) {
         setApplicationIconBadgeNumber(context, badgeCount)
       }
