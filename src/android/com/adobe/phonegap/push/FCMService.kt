@@ -22,6 +22,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
 import androidx.core.text.HtmlCompat
+import com.adobe.phonegap.push.PushPlugin.Companion
 import com.adobe.phonegap.push.PushPlugin.Companion.isActive
 import com.adobe.phonegap.push.PushPlugin.Companion.isInForeground
 import com.adobe.phonegap.push.PushPlugin.Companion.sendExtras
@@ -129,13 +130,48 @@ class FCMService : FirebaseMessagingService() {
     Log.d(TAG, "wakeUpDevice DONE");
   }
 
-  fun createNotificationChannel(context: Context, channelId: String?, channelName: String?) {
+  private fun recreateChannel(params: JSONObject) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      val notificationManager =
-        context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-      val channel =
-        NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_DEFAULT)
-      notificationManager.createNotificationChannel(channel)
+      val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+      val deleteChannelId = params["deleteChannelId"].toString();
+      Log.d(TAG, "recreateChannel deleteChannelId = $deleteChannelId")
+      notificationManager.deleteNotificationChannel(deleteChannelId)
+      val channelName = "General Notifications"
+      val importance = NotificationManager.IMPORTANCE_HIGH
+      val notificationChannel = NotificationChannel(params["createChannelId"].toString(), channelName, importance)
+      val isVibrate:Boolean = params["isVibrate"] as Boolean
+      notificationChannel.description = "General Notifications"
+      notificationChannel.enableLights(true)
+      notificationChannel.enableVibration(isVibrate)
+      val sound:String = params["sound"].toString()
+      Log.d(TAG, "recreateChannel sound = $sound")
+      if(sound!=null && sound!=PushConstants.SOUND_NONE) {
+        var soundUri:Uri
+        if(sound == PushConstants.SOUND_RINGTONE) {
+          soundUri = Settings.System.DEFAULT_RINGTONE_URI
+        }else if(sound == PushConstants.SOUND_DEFAULT){
+          soundUri = Settings.System.DEFAULT_NOTIFICATION_URI
+        }else{
+          val scheme = ContentResolver.SCHEME_ANDROID_RESOURCE
+          val packageName = applicationContext.packageName
+          //val soundResource:Int = applicationContext.resources.getIdentifier(sound, "raw", context.packageName)
+          //val soundUriString:String = "android.resource://$packageName/$soundResource"
+          val soundUriString:String = "${scheme}://$packageName/raw/$sound"
+          Log.d(TAG, "recreateChannel setting custom sound, soundUriString = $soundUriString")
+          soundUri = Uri.parse(soundUriString)
+        }
+        val audioAttributes = AudioAttributes.Builder()
+          .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+          .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+          .build()
+        Log.d(TAG, "recreateChannel setting sound to be played on notification channel")
+        notificationChannel.setSound(soundUri, audioAttributes)
+      }else{
+        Log.d(TAG, "recreateChannel setting sound to NOT be played on notification channel")
+        notificationChannel.setSound(null, null)
+      }
+      //val notificationManager = getSystemService(NotificationManager::class.java)
+      notificationManager.createNotificationChannel(notificationChannel)
     }
   }
 
@@ -149,59 +185,22 @@ class FCMService : FirebaseMessagingService() {
     wakeUpDevice(context);
 
     val jsonPayloadString = message.data["jsonPayload"] ?: "{}"
-    var myTitle = "CVAT Notification"
+    var myTitle = "Notification"
     var myMessage = ""
+    var channelId:String = PushConstants.DEFAULT_CHANNEL_ID
+    var sound:String = PushConstants.SOUND_DEFAULT
+    var vibration: Boolean = true
     try {
-      // Parse the jsonPayload string into a JSONObject
       val jsonObject = JSONObject(jsonPayloadString)
-      myTitle = jsonObject.optString("title", "CVAT Notification")
+      myTitle = jsonObject.optString("title", "Notification")
       myMessage = jsonObject.optString("body", "")
+      channelId = jsonObject.optString("channelId", PushConstants.DEFAULT_CHANNEL_ID)
+      sound =  jsonObject.optString(PushConstants.SOUND, PushConstants.SOUND_DEFAULT)
+      vibration =  jsonObject.optBoolean(PushConstants.CHANNEL_VIBRATION, true)
     }catch(e:Exception){}
 
     Log.d(TAG, "onMessageReceived (from=$from)")
-
-    val sharedPref = applicationContext.getSharedPreferences(
-      PushConstants.COM_ADOBE_PHONEGAP_PUSH,
-      Context.MODE_PRIVATE
-    )
-    var isSound = sharedPref.getBoolean(PushConstants.SOUND, true)
-    val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-    val channelId = "fcm_default_channel"
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      val channelName = "My notification channel"
-      val importance = NotificationManager.IMPORTANCE_HIGH
-      val notificationChannel = NotificationChannel(channelId, channelName, importance)
-      notificationChannel.description = "General Notifications"
-      notificationChannel.enableLights(true)
-      notificationChannel.enableVibration(true)
-      val sound = message.data["sound"]
-      Log.d(TAG, "onMessageReceived isSound = $isSound")
-      Log.d(TAG, "onMessageReceived sound = $sound")
-      if(isSound==true && sound!=null) {
-        var soundUri = Uri.parse("")
-        if(sound == PushConstants.SOUND_RINGTONE) {
-          soundUri = Settings.System.DEFAULT_RINGTONE_URI
-        }else if(sound == PushConstants.SOUND_DEFAULT){
-          soundUri = Settings.System.DEFAULT_NOTIFICATION_URI
-        }else{
-          Log.d(TAG, "onMessageReceived setting sound to be car_horn... ")
-          soundUri = Uri.parse("android.resource://" + packageName + "/" + com.cvat.sbols.R.raw.car_horn)
-        }
-        val audioAttributes = AudioAttributes.Builder()
-          .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-          .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-          .build()
-        Log.d(TAG, "onMessageReceived setting sound to be played on notification channel")
-        notificationChannel.setSound(soundUri, audioAttributes)
-      }else{
-        Log.d(TAG, "onMessageReceived setting sound to NOT be played on notification channel")
-        notificationChannel.setSound(null, null)
-      }
-      //val notificationManager = getSystemService(NotificationManager::class.java)
-      notificationManager.createNotificationChannel(notificationChannel)
-    }
-
-    val intent = Intent(this, MainActivity::class.java)
+    Log.d(TAG, "onMessageReceived channelId = $channelId")
 
     var extras = Bundle()
 
@@ -232,6 +231,9 @@ class FCMService : FirebaseMessagingService() {
       // Foreground
       extras.putBoolean(PushConstants.FOREGROUND, isInForeground)
 
+      //Timestamp:
+      extras.putLong(PushConstants.TIMESTAMP, System.currentTimeMillis())
+
       // if we are in the foreground and forceShow is `false` only send data
       val forceShow = pushSharedPref.getBoolean(PushConstants.FORCE_SHOW, false)
       if (!forceShow && isInForeground) {
@@ -248,28 +250,91 @@ class FCMService : FirebaseMessagingService() {
         showNotificationIfPossible(extras)
       }
     }
-    //intent.putExtras(extras);
+    //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+    //  val notificationChannels = notificationManager.notificationChannels
+    //  for (notificationChannel in notificationChannels) {
+    //    Log.d(TAG, "onMessageReceived channel(" + notificationChannel.id + ") = " + notificationChannel.description)
+    //  }
+    //}
+
+    //RECREATE CHANNEL IF NOT USER CONFIGURED AND SEND NOTIFICATION PARAMETERS CHANGED(FROM SAVED OR DEFAULT):
+
+    val channelVersionsPrefs = applicationContext.getSharedPreferences(
+      PushConstants.CHANNEL_VERSIONS_SAVED,
+      Context.MODE_PRIVATE
+    )
+    val channelVersionPrefsName = "CHANNEL_VERSION_$channelId";
+    var saveVersion:Int = channelVersionsPrefs.getInt(channelVersionPrefsName, 0)
+    var currentChannelId = channelId + "_" + saveVersion
+
+    val sharedPrefName = "CHANNEL_$channelId"
+    Log.d(TAG, "onMessageReceived sharedPrefName: $sharedPrefName")
+    val channelCreatedPrefs = applicationContext.getSharedPreferences(
+      sharedPrefName,
+      Context.MODE_PRIVATE
+    );
+    val allPrefs = channelCreatedPrefs.all
+    for ((key, value) in allPrefs) {
+      Log.d(TAG, "onMessageReceived channelCreatedPrefs: $key: $value")
+    }
+    val channelIsUserConfigured:Boolean = channelCreatedPrefs.getBoolean(PushConstants.USER_CONFIGURED, false)
+    val channelSound:String? = channelCreatedPrefs.getString(PushConstants.SOUND, PushConstants.SOUND_DEFAULT)
+    val channelVibration:Boolean = channelCreatedPrefs.getBoolean(PushConstants.CHANNEL_VIBRATION, true)
+    Log.d(TAG, "onMessageReceived channelIsUserConfigured = $channelIsUserConfigured, sound = $sound, vibration=$vibration")
+    Log.d(TAG, "onMessageReceived channelSound: $channelSound, channelVibration: $channelVibration")
+    if(channelIsUserConfigured===false){
+      //*NOTE STRINGS USE != BECAUSE channelSound CAN BE NULL:
+      if(sound != channelSound || vibration !== channelVibration){
+        //SAVE PREFS:
+        val channelPrefs = applicationContext.getSharedPreferences(
+          "CHANNEL_$channelId",
+          Context.MODE_PRIVATE
+        )
+        val channelPrefsEditor = channelPrefs.edit()
+        channelPrefsEditor.putString(PushConstants.SOUND, sound)
+        channelPrefsEditor.putBoolean(PushConstants.CHANNEL_VIBRATION, vibration)
+        channelPrefsEditor.apply()
+        //RECREATE CHANNEL:
+        val params = JSONObject()
+        params.put("isVibrate", vibration)
+        params.put("sound", sound)
+        params.put("deleteChannelId", channelId + "_" + saveVersion)
+        saveVersion++
+        currentChannelId = channelId + "_" + saveVersion
+        params.put("createChannelId", currentChannelId)
+        val channelVersionsPrefsEditor = channelVersionsPrefs.edit()
+        channelVersionsPrefsEditor.putInt(channelVersionPrefsName, saveVersion)
+        channelVersionsPrefsEditor.apply()
+        recreateChannel(params)
+      }
+    }
+
+    // BUILD NOTIFICATION:
+    val intent = Intent(this, MainActivity::class.java)
     val pendingIntent: PendingIntent = PendingIntent.getActivity(
       context,
       0,
       intent,
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
-
-    // Build the notification
+    Log.d(TAG, "onMessageReceived creating NotificationCompat.Builder with currentChannelId = $currentChannelId")
     val notificationBuilder: NotificationCompat.Builder = NotificationCompat.Builder(
-      this, channelId
+      this, currentChannelId
     ).setSmallIcon(com.cvat.sbols.R.mipmap.ic_launcher)
       .setContentTitle(myTitle)
       .setContentText(myMessage)
       .setAutoCancel(true)
       .setContentIntent(pendingIntent)
       .setPriority(NotificationCompat.PRIORITY_HIGH)
+      .setColor(Color.WHITE)
+      .setStyle(
+            NotificationCompat.BigTextStyle()
+                .bigText(myMessage)
+      )
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-
-
-    // Show the notification
-    notificationManager.notify(1, notificationBuilder.build())
+      .setFullScreenIntent(pendingIntent, true)
+    val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    notificationManager.notify(0, notificationBuilder.build())
   }
 
   private fun replaceKey(oldKey: String, newKey: String, extras: Bundle, newExtras: Bundle) {
@@ -516,7 +581,7 @@ class FCMService : FirebaseMessagingService() {
       val contentAvailable = it.getString(PushConstants.CONTENT_AVAILABLE)
       val forceStart = it.getString(PushConstants.FORCE_START)
       val badgeCount = extractBadgeCount(extras)
-      Log.d(TAG, "showNotificationIfPossible forceStart = $forceStart")
+
       if (badgeCount >= 0) {
         setApplicationIconBadgeNumber(context, badgeCount)
       }

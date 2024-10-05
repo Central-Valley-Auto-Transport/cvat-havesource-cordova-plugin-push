@@ -92,7 +92,8 @@ class PushPlugin : CordovaPlugin() {
             PushConstants.MESSAGE,
             PushConstants.COUNT,
             PushConstants.SOUND,
-            PushConstants.IMAGE
+            PushConstants.IMAGE,
+            PushConstants.TIMESTAMP
           )
 
           val it: Iterator<String> = extras.keySet().iterator()
@@ -239,20 +240,53 @@ class PushPlugin : CordovaPlugin() {
     return channels
   }
 
+  private fun setChannelSystemDefaults(channelId: String) {
+    Log.d(TAG, "setIsUserConfigured channelId = $channelId");
+    val channelPrefs = applicationContext.getSharedPreferences(
+      "CHANNEL_$channelId",
+      Context.MODE_PRIVATE
+    )
+    val channelPrefsEditor = channelPrefs.edit()
+    channelPrefsEditor.putBoolean(PushConstants.USER_CONFIGURED, false)
+    channelPrefsEditor.apply()
+  }
+
   @TargetApi(26)
   private fun deleteChannel(channelId: String) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      notificationManager.deleteNotificationChannel(channelId)
+      val channelVersionsPrefs = applicationContext.getSharedPreferences(
+        PushConstants.CHANNEL_VERSIONS_SAVED,
+        Context.MODE_PRIVATE
+      )
+      val channelVersionPrefsName = "CHANNEL_VERSION_$channelId";
+      var mVersion:Int = channelVersionsPrefs.getInt(channelVersionPrefsName, 0)
+      var currentChannelId = channelId + "_" + mVersion
+      Log.d(TAG, "deleteChannel calling notificationManager.deleteNotificationChannel with currentChannelId = $currentChannelId")
+      notificationManager.deleteNotificationChannel(currentChannelId)
     }
   }
 
   @TargetApi(26)
   @Throws(JSONException::class)
   private fun createChannel(channel: JSONObject?) {
+    Log.d(TAG, "createChannel channel = " + channel.toString())
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      val channelId = channel?.getString(PushConstants.CHANNEL_ID)
+      val channelVersionsPrefs = applicationContext.getSharedPreferences(
+        PushConstants.CHANNEL_VERSIONS_SAVED,
+        Context.MODE_PRIVATE
+      )
+      val channelVersionPrefsName = "CHANNEL_VERSION_$channelId";
+      var saveVersion:Int = channelVersionsPrefs.getInt(channelVersionPrefsName, -1)
+      saveVersion++
+      val channelVersionsPrefsEditor = channelVersionsPrefs.edit()
+      channelVersionsPrefsEditor.putInt(channelVersionPrefsName, saveVersion)
+      channelVersionsPrefsEditor.apply()
+      val createChannelId = channelId + "_" + saveVersion
+      Log.d(TAG, "createChannel setting NotificationChannel with createChannelId = $createChannelId")
       channel?.let {
         NotificationChannel(
-          it.getString(PushConstants.CHANNEL_ID),
+          createChannelId,
           it.optString(PushConstants.CHANNEL_DESCRIPTION, appName),
           it.optInt(PushConstants.CHANNEL_IMPORTANCE, NotificationManager.IMPORTANCE_DEFAULT)
         ).apply {
@@ -281,8 +315,11 @@ class PushPlugin : CordovaPlugin() {
           /**
            * Sound Settings
            */
+          val sound = it.getString(PushConstants.SOUND)
+          Log.d(TAG, "createChannel sound = $sound")
           val (soundUri, audioAttributes) = getNotificationChannelSound(it)
           setSound(soundUri, audioAttributes)
+
 
           /**
            * Set vibration settings.
@@ -294,6 +331,23 @@ class PushPlugin : CordovaPlugin() {
           } else {
             enableVibration(hasVibration)
           }
+
+          /**
+           * Save if user configured wants it a specific way(even if it is all default):           *
+           */
+          Log.d(TAG, "createChannel putting sound = " + it.optString(PushConstants.SOUND, PushConstants.SOUND_DEFAULT));
+          val sharedPrefName = "CHANNEL_$channelId"
+          Log.d(TAG, "createChannel sharedPrefName: $sharedPrefName")
+          val channelPrefs = applicationContext.getSharedPreferences(
+            sharedPrefName,
+            Context.MODE_PRIVATE
+          )
+          val channelPrefsEditor = channelPrefs.edit()
+          channelPrefsEditor.putBoolean(PushConstants.USER_CONFIGURED, it.optBoolean(PushConstants.USER_CONFIGURED, false))
+          channelPrefsEditor.putString(PushConstants.SOUND, it.optString(PushConstants.SOUND, PushConstants.SOUND_DEFAULT))
+          channelPrefsEditor.putBoolean(PushConstants.CHANNEL_VIBRATION, it.optBoolean(PushConstants.CHANNEL_VIBRATION, true))
+          channelPrefsEditor.apply()
+
 
           notificationManager.createNotificationChannel(this)
         }
@@ -422,6 +476,7 @@ class PushPlugin : CordovaPlugin() {
       PushConstants.SUBSCRIBE -> executeActionSubscribe(data, callbackContext)
       PushConstants.UNSUBSCRIBE -> executeActionUnsubscribe(data, callbackContext)
       PushConstants.CREATE_CHANNEL -> executeActionCreateChannel(data, callbackContext)
+      PushConstants.SET_CHANNEL_SYSTEM_DEFAULTS -> executeActionSetChannelSystemDefaults(data, callbackContext)
       PushConstants.DELETE_CHANNEL -> executeActionDeleteChannel(data, callbackContext)
       PushConstants.LIST_CHANNELS -> executeActionListChannels(callbackContext)
       PushConstants.CLEAR_NOTIFICATION -> executeActionClearNotification(data, callbackContext)
@@ -771,6 +826,19 @@ class PushPlugin : CordovaPlugin() {
       try {
         Log.v(TAG, "Execute::CreateChannel")
         createChannel(data.getJSONObject(0))
+        callbackContext.success()
+      } catch (e: JSONException) {
+        callbackContext.error(e.message)
+      }
+    }
+  }
+
+  private fun executeActionSetChannelSystemDefaults(data: JSONArray, callbackContext: CallbackContext){
+    cordova.threadPool.execute {
+      try {
+        val channelId = data.getString(0)
+        Log.v(TAG, "Execute::setIsUserConfigured channelId=$channelId")
+        setChannelSystemDefaults(channelId)
         callbackContext.success()
       } catch (e: JSONException) {
         callbackContext.error(e.message)

@@ -327,6 +327,10 @@ module.exports = {
     exec(successCallback, errorCallback, 'PushNotification', 'createChannel', [channel]);
   },
 
+  setChannelSystemDefaults(successCallback, errorCallback, channelId){
+    exec(successCallback, errorCallback, 'PushNotification', 'setChannelSystemDefaults', [channelId]);
+  },
+
   deleteChannel: (successCallback, errorCallback, channelId) => {
     exec(successCallback, errorCallback, 'PushNotification', 'deleteChannel', [channelId]);
   },

@@ -19,6 +19,7 @@ object PushConstants {
   const val SOUND: String = "sound"
   const val SOUND_DEFAULT: String = "default"
   const val SOUND_RINGTONE: String = "ringtone"
+  const val SOUND_NONE: String = "NONE"
   const val VIBRATE: String = "vibrate"
   const val ACTIONS: String = "actions"
   const val CALLBACK: String = "callback"
@@ -97,6 +98,7 @@ object PushConstants {
   const val DEFAULT_CHANNEL_ID: String = "PushPluginChannel"
   const val CHANNELS: String = "channels"
   const val CHANNEL_ID: String = "id"
+  const val CHANNEL_VERSIONS_SAVED: String = "channel_versions_saved"
   const val CHANNEL_DESCRIPTION: String = "description"
   const val CHANNEL_IMPORTANCE: String = "importance"
   const val CHANNEL_LIGHT_COLOR: String = "lightColor"
@@ -110,4 +112,7 @@ object PushConstants {
   const val CLEAR_NOTIFICATION: String = "clearNotification"
   const val MESSAGE_ID: String = "google.message_id"
   const val IS_ENABLED: String = "isEnabled"
+  const val USER_CONFIGURED: String = "user_configured"
+  const val TIMESTAMP: String = "timestamp"
+  const val SET_CHANNEL_SYSTEM_DEFAULTS: String = "setChannelSystemDefaults"
 }
