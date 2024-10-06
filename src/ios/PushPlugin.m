@@ -23,8 +23,28 @@
  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*CHECKLIST:
+   1) Foreground or device awake (app open & paused):
+       A) Click opens app, shows popup & saves notification
+       B) Open app shows popup and saves notification
+   2) Foreground or device awake (app closed):
+       A) Click opens app, shows popup & saves notification
+       B) Open app shows popup and saves notification
+   3) Background or device asleep (app open & paused):
+       A) Click opens app, shows popup & saves notification
+       B) Open app shows popup and saves notification
+   4) Background or device asleep (app closed):
+       A) Click opens app, shows popup & saves notification
+       B) Open app shows popup and saves notification
+ */
+/* ERRORS
+   1) Not playing sound
+   2) Not saving data(calling push.on("notification") when opening app regardless if notification clicked
+ */
 #import "PushPlugin.h"
 #import "AppDelegate+notification.h"
+#import <AudioToolbox/AudioToolbox.h>
+#import <AVFoundation/AVFoundation.h>
 
 @import Firebase;
 @import FirebaseCore;
@@ -147,9 +167,16 @@
             [self setFcmTopics:topics];
 
             UNAuthorizationOptions authorizationOptions = UNAuthorizationOptionNone;
+            
+            // USE DEFAULTS TO SAVE DEFAULT NOTIFICATION PREFERENCES:
+            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+            NSMutableDictionary *notificationPreferences = [[NSMutableDictionary alloc] init];
+            [notificationPreferences setObject:[NSNumber numberWithBool:NO] forKey:@"is_user_configured"];
 
             id badgeArg = [iosOptions objectForKey:@"badge"];
-            id soundArg = [iosOptions objectForKey:@"sound"];
+            id isSoundArg = [iosOptions objectForKey:@"is_sound"];
+            NSString *soundArg = [iosOptions objectForKey:@"sound"];
+            id isVibrationArg = [iosOptions objectForKey:@"is_vibration"];
             id alertArg = [iosOptions objectForKey:@"alert"];
             id criticalArg = [iosOptions objectForKey:@"critical"];
             id clearBadgeArg = [iosOptions objectForKey:@"clearBadge"];
@@ -160,10 +187,28 @@
                 authorizationOptions |= UNAuthorizationOptionBadge;
             }
 
-            if (([soundArg isKindOfClass:[NSString class]] && [soundArg isEqualToString:@"true"]) || [soundArg boolValue])
+            //SET/SAVE IF SOUND:
+            if (([isSoundArg isKindOfClass:[NSString class]] && [isSoundArg isEqualToString:@"true"]) || [isSoundArg boolValue])
             {
                 authorizationOptions |= UNAuthorizationOptionSound;
+                [notificationPreferences setObject:[NSNumber numberWithBool:YES] forKey:@"is_sound"];
+            } else {
+                [notificationPreferences setObject:[NSNumber numberWithBool:NO] forKey:@"is_sound"];
             }
+            
+            //SET/SAVE SOUND:
+            [notificationPreferences setObject:soundArg forKey:@"sound"];
+            
+            //SET/SAVE IF VIBRATION:
+            if (([isVibrationArg isKindOfClass:[NSString class]] && [isVibrationArg isEqualToString:@"true"]) || [isVibrationArg boolValue])
+            {
+                [notificationPreferences setObject:[NSNumber numberWithBool:YES] forKey:@"is_vibration"];
+            } else {
+                [notificationPreferences setObject:[NSNumber numberWithBool:NO] forKey:@"is_vibration"];
+            }
+            
+            [defaults setObject:notificationPreferences forKey:@"notificationPreferences"];
+            [defaults synchronize];
 
             if (([alertArg isKindOfClass:[NSString class]] && [alertArg isEqualToString:@"true"]) || [alertArg boolValue])
             {
@@ -422,9 +467,53 @@
         } else {
             [additionalData setObject:[NSNumber numberWithBool:NO] forKey:@"coldstart"];
         }
-
+        NSDate *currentDate = [NSDate date];
+        NSTimeInterval timeInSeconds = [currentDate timeIntervalSince1970];
+        long long timestamp = (long long)(timeInSeconds * 1000);
+        NSNumber *timestampNumber = [NSNumber numberWithLongLong:timestamp];
+        [message setObject:timestampNumber forKey:@"timestamp"];
         [message setObject:additionalData forKey:@"additionalData"];
-
+        
+        
+        //GET JSON DATA PAYLOAD(SYSTEM PREFS):
+        NSString *jsonPayloadString = [additionalData objectForKey:@"jsonPayload"];
+        NSData *jsonPayloadData = [jsonPayloadString dataUsingEncoding:NSUTF8StringEncoding];
+        NSError *error;
+        NSMutableDictionary *jsonPayload = [NSJSONSerialization JSONObjectWithData:jsonPayloadData options:NSJSONReadingMutableContainers error:&error];
+        if (error) {
+            NSLog(@"[PushPlugin] Error parsing JSON: %@", error.localizedDescription);
+        } else {
+            //GET USER PREFS:
+            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+            NSMutableDictionary *notificationPreferences = [defaults objectForKey:@"notificationPreferences"];
+            NSLog(@"[PushPlugin] notificationReceived got saved notificationPreferences = %@", notificationPreferences);
+            BOOL isUserConfigured = [notificationPreferences[@"is_user_configured"] boolValue];
+            BOOL isDefaultSound = [notificationPreferences[@"is_sound"] boolValue];
+            BOOL isDefaultVibration = [notificationPreferences[@"is_vibration"] boolValue];
+            NSString *defaultSound = [notificationPreferences objectForKey:@"sound"];
+            //GET SYSTEM(MESSAGE SENT) PREFERENCES
+            NSLog(@"[PushPlugin] Parsed JSON Dictionary: %@", jsonPayload);
+            NSString *sound = [jsonPayload objectForKey:@"sound"];
+            NSLog(@"[PushPlugin] system or message sent sound is %@", sound);
+            bool isVibrate = [jsonPayload objectForKey:@"vibration"];
+            NSLog(@"[PushPlugin] system or message sent isVibrate is %d", isVibrate);
+            //SET PREFERENCES TO BE PLAYED:
+            BOOL playIsSound = isUserConfigured==YES? isDefaultSound:![sound isEqualToString:@"NONE"];
+            NSString *playSound = isUserConfigured==YES? defaultSound:sound;
+            BOOL playIsVibrate = isUserConfigured==YES? isDefaultVibration:isVibrate;
+            //PLAY SOUND:
+            if(playIsSound == YES){
+                NSLog(@"[PushPlugin] notificationReceived PLAYING SOUND!");
+                [self playCustomSound:playSound];
+            }
+            //VIBRATE:
+            if (playIsVibrate == YES) {
+                NSLog(@"[PushPlugin] notificationReceived VIBRATING!");
+                [self triggerVibration];
+            }else{
+                NSLog(@"[PushPlugin] notificationReceived NOT VIBRATING!");
+            }
+        }
         // send notification message
         CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:message];
         [pluginResult setKeepCallbackAsBool:YES];
@@ -434,6 +523,67 @@
         self.notificationMessage = nil;
     }
 }
+
+// Method to play custom sound
+- (void)playCustomSound:(NSString *)soundFileName {
+    NSLog(@"[PushPlugin] playCustomSound called, sound: %@", soundFileName);
+    
+    // Set audio session category
+    AVAudioSession *session = [AVAudioSession sharedInstance];
+    NSError *setCategoryError = nil;
+    [session setCategory:AVAudioSessionCategoryAmbient error:&setCategoryError];
+    if (setCategoryError) {
+        NSLog(@"Error setting audio session category: %@", setCategoryError.localizedDescription);
+    }
+
+    NSError *activationError = nil;
+    [session setActive:YES error:&activationError];
+    if (activationError) {
+        NSLog(@"Error activating audio session: %@", activationError.localizedDescription);
+    }
+    SystemSoundID soundID = 1007;
+    if(![soundFileName isEqualToString:@"default"] && ![soundFileName isEqualToString:@"ringtone"]){
+        NSString *soundFilePath = [[NSBundle mainBundle] pathForResource:soundFileName ofType:@"caf"];
+        NSLog(@"[PushPlugin] playCustomSound, soundFilePath: %@", soundFilePath);
+        NSURL *soundURL = [NSURL fileURLWithPath:soundFilePath];
+        NSLog(@"[PushPlugin] playCustomSound, soundURL: %@", [soundURL absoluteString]);
+        OSStatus status = AudioServicesCreateSystemSoundID((__bridge CFURLRef)soundURL, &soundID);
+        if (status != kAudioServicesNoError) {
+            NSLog(@"[PushPlugin] Error creating system sound ID: %d", status);
+        }
+    }
+
+    NSLog(@"[PushPlugin] System Sound ID: %u", soundID); // Log as unsigned int
+    AudioServicesPlaySystemSoundWithCompletion(soundID, ^{
+        AudioServicesDisposeSystemSoundID(soundID);
+    });
+}
+
+// Method to trigger vibration
+- (void)triggerVibration {
+    AudioServicesPlaySystemSound(kSystemSoundID_Vibrate);
+}
+
+- (void)getSavedNotifications:(CDVInvokedUrlCommand*)command {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSArray *savedNotifications = [defaults objectForKey:@"savedNotifications"];
+    [defaults removeObjectForKey:@"savedNotifications"];
+    CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:savedNotifications];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
+
+// Method to set notification preferences
+- (void)setNotificationPreferences:(CDVInvokedUrlCommand *)command {
+    NSMutableDictionary *notificationPreferences = [command.arguments objectAtIndex:0];
+    NSLog(@"[PushPlugin] setNotificationPreferences called, notificationPreferences = %@", notificationPreferences);
+    // Store it in NSUserDefaults
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setObject:notificationPreferences forKey:@"notificationPreferences"];
+    [defaults synchronize];
+    CDVPluginResult *commandResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Set notification preferences."];
+    [self.commandDelegate sendPluginResult:commandResult callbackId:command.callbackId];
+}
+
 
 - (void)clearNotification:(CDVInvokedUrlCommand *)command {
     NSNumber *notId = [command.arguments objectAtIndex:0];

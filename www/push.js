@@ -330,6 +330,12 @@ module.exports = {
   setChannelSystemDefaults: function setChannelSystemDefaults(successCallback, errorCallback, channelId){
     exec(successCallback, errorCallback, 'PushNotification', 'setChannelSystemDefaults', [channelId]);
   },
+  setNotificationPreferences(successCallback, errorCallback, preferences){
+    exec(successCallback, errorCallback, 'PushNotification', 'setNotificationPreferences', [preferences]);
+  },
+  getSavedNotifications(successCallback, errorCallback, preferences){
+    exec(successCallback, errorCallback, 'PushNotification', 'getSavedNotifications', []);
+  },  
   deleteChannel: function deleteChannel(successCallback, errorCallback, channelId) {
     exec(successCallback, errorCallback, 'PushNotification', 'deleteChannel', [channelId]);
   },

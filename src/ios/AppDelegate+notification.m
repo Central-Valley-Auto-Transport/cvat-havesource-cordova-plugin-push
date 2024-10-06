@@ -9,6 +9,8 @@
 #import "AppDelegate+notification.h"
 #import "PushPlugin.h"
 #import <objc/runtime.h>
+#import <AudioToolbox/AudioToolbox.h>
+#import <AVFoundation/AVFoundation.h>
 
 static char launchNotificationKey;
 static char coldstartKey;
@@ -78,9 +80,57 @@ NSString *const pushPluginApplicationDidBecomeActiveNotification = @"pushPluginA
     [pushHandler didFailToRegisterForRemoteNotificationsWithError:error];
 }
 
-- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
-    NSLog(@"[PushPlugin] didReceiveNotification with fetchCompletionHandler");
-
+- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSMutableDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
+    NSLog(@"[PushPlugin] didReceiveRemoteNotification with fetchCompletionHandler");
+    NSLog(@"[PushPlugin] didReceiveRemoteNotification userInfo: %@", userInfo);
+    
+    //SAVE NOTIFICATION INTO ARRAY IN USER DEFAULTS TO GET BACK LATER:
+    [self saveNotification:userInfo];
+    //-----------------------------------------------------------------
+    NSMutableDictionary *additionalData = [[NSMutableDictionary alloc] init];
+    for (id key in userInfo) {
+        [additionalData setObject:[userInfo objectForKey:key] forKey:key];
+    }
+    //GET JSON DATA PAYLOAD(SYSTEM PREFS):
+    NSString *jsonPayloadString = [additionalData objectForKey:@"jsonPayload"];
+    NSData *jsonPayloadData = [jsonPayloadString dataUsingEncoding:NSUTF8StringEncoding];
+    NSError *error;
+    NSMutableDictionary *jsonPayload = [NSJSONSerialization JSONObjectWithData:jsonPayloadData options:NSJSONReadingMutableContainers error:&error];
+    if (error) {
+        NSLog(@"[PushPlugin] Error parsing JSON: %@", error.localizedDescription);
+    } else {
+        //GET USER PREFS:
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        NSMutableDictionary *notificationPreferences = [defaults objectForKey:@"notificationPreferences"];
+        NSLog(@"[PushPlugin] notificationReceived got saved notificationPreferences = %@", notificationPreferences);
+        BOOL isUserConfigured = [notificationPreferences[@"is_user_configured"] boolValue];
+        BOOL isDefaultSound = [notificationPreferences[@"is_sound"] boolValue];
+        BOOL isDefaultVibration = [notificationPreferences[@"is_vibration"] boolValue];
+        NSString *defaultSound = [notificationPreferences objectForKey:@"sound"];
+        //GET SYSTEM(MESSAGE SENT) PREFERENCES
+        NSLog(@"[PushPlugin] Parsed JSON Dictionary: %@", jsonPayload);
+        NSString *sound = [jsonPayload objectForKey:@"sound"];
+        NSLog(@"[PushPlugin] system or message sent sound is %@", sound);
+        bool isVibrate = [jsonPayload objectForKey:@"vibration"];
+        NSLog(@"[PushPlugin] system or message sent isVibrate is %d", isVibrate);
+        //SET PREFERENCES TO BE PLAYED:
+        BOOL playIsSound = isUserConfigured==YES? isDefaultSound:![sound isEqualToString:@"NONE"];
+        NSString *playSound = isUserConfigured==YES? defaultSound:sound;
+        BOOL playIsVibrate = isUserConfigured==YES? isDefaultVibration:isVibrate;
+        //PLAY SOUND:
+        if(playIsSound == YES){
+            NSLog(@"[PushPlugin] notificationReceived PLAYING SOUND!");
+            [self playCustomSound:playSound];
+        }
+        //VIBRATE:
+        if (playIsVibrate == YES) {
+            NSLog(@"[PushPlugin] notificationReceived VIBRATING!");
+            [self triggerVibration];
+        }else{
+            NSLog(@"[PushPlugin] notificationReceived NOT VIBRATING!");
+        }
+    }
+    
     // app is in the background or inactive, so only call notification callback if this is a silent push
     if (application.applicationState != UIApplicationStateActive) {
 
@@ -91,12 +141,12 @@ NSString *const pushPluginApplicationDidBecomeActiveNotification = @"pushPluginA
         id aps = [userInfo objectForKey:@"aps"];
         id contentAvailable = [aps objectForKey:@"content-available"];
         if ([contentAvailable isKindOfClass:[NSString class]] && [contentAvailable isEqualToString:@"1"]) {
-            silent = 1;
+            //silent = 1;
         } else if ([contentAvailable isKindOfClass:[NSNumber class]]) {
-            silent = [contentAvailable integerValue];
+            //silent = [contentAvailable integerValue];
         }
 
-        if (silent == 1) {
+        //if (silent == 1) {
             NSLog(@"[PushPlugin] this should be a silent push");
             void (^safeHandler)(UIBackgroundFetchResult) = ^(UIBackgroundFetchResult result){
                 dispatch_async(dispatch_get_main_queue(), ^{
@@ -122,15 +172,74 @@ NSString *const pushPluginApplicationDidBecomeActiveNotification = @"pushPluginA
             pushHandler.notificationMessage = userInfo;
             pushHandler.isInline = NO;
             [pushHandler notificationReceived];
-        } else {
+        //} else {
             NSLog(@"[PushPlugin] Save push for later");
             self.launchNotification = userInfo;
             completionHandler(UIBackgroundFetchResultNewData);
-        }
+        //}
 
     } else {
         completionHandler(UIBackgroundFetchResultNoData);
     }
+}
+
+// Method to save notification data
+- (void)saveNotification:(NSMutableDictionary *)userInfo {
+    // Store it in NSUserDefaults
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSMutableArray *savedNotifications = [[defaults objectForKey:@"savedNotifications"] mutableCopy];
+    if (!savedNotifications) {
+        savedNotifications = [NSMutableArray array];
+    }
+    NSDate *currentDate = [NSDate date];
+    NSTimeInterval timeInSeconds = [currentDate timeIntervalSince1970];
+    long long timestamp = (long long)(timeInSeconds * 1000);
+    NSNumber *timestampNumber = [NSNumber numberWithLongLong:timestamp];
+    [userInfo setObject:timestampNumber forKey:@"timestamp"];
+    
+    [savedNotifications addObject:userInfo];
+    [defaults setObject:savedNotifications forKey:@"savedNotifications"];
+    [defaults synchronize];
+}
+
+// Method to play custom sound
+- (void)playCustomSound:(NSString *)soundFileName {
+    NSLog(@"[PushPlugin] playCustomSound called, sound: %@", soundFileName);
+    
+    // Set audio session category
+    AVAudioSession *session = [AVAudioSession sharedInstance];
+    NSError *setCategoryError = nil;
+    [session setCategory:AVAudioSessionCategoryAmbient error:&setCategoryError];
+    if (setCategoryError) {
+        NSLog(@"Error setting audio session category: %@", setCategoryError.localizedDescription);
+    }
+
+    NSError *activationError = nil;
+    [session setActive:YES error:&activationError];
+    if (activationError) {
+        NSLog(@"Error activating audio session: %@", activationError.localizedDescription);
+    }
+    SystemSoundID soundID = 1007;
+    if(![soundFileName isEqualToString:@"default"] && ![soundFileName isEqualToString:@"ringtone"]){
+        NSString *soundFilePath = [[NSBundle mainBundle] pathForResource:soundFileName ofType:@"caf"];
+        NSLog(@"[PushPlugin] playCustomSound, soundFilePath: %@", soundFilePath);
+        NSURL *soundURL = [NSURL fileURLWithPath:soundFilePath];
+        NSLog(@"[PushPlugin] playCustomSound, soundURL: %@", [soundURL absoluteString]);
+        OSStatus status = AudioServicesCreateSystemSoundID((__bridge CFURLRef)soundURL, &soundID);
+        if (status != kAudioServicesNoError) {
+            NSLog(@"[PushPlugin] Error creating system sound ID: %d", status);
+        }
+    }
+
+    NSLog(@"[PushPlugin] System Sound ID: %u", soundID); // Log as unsigned int
+    AudioServicesPlaySystemSoundWithCompletion(soundID, ^{
+        AudioServicesDisposeSystemSoundID(soundID);
+    });
+}
+
+// Method to trigger vibration
+- (void)triggerVibration {
+    AudioServicesPlaySystemSound(kSystemSoundID_Vibrate);
 }
 
 - (void)checkUserHasRemoteNotificationsEnabledWithCompletionHandler:(nonnull void (^)(BOOL))completionHandler
