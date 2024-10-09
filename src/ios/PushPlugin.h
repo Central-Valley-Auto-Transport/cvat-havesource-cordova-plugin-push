@@ -50,16 +50,23 @@
 @property (nonatomic, strong) NSMutableDictionary *handlerObj;
 
 - (void)init:(CDVInvokedUrlCommand*)command;
+- (void)doInit: (NSMutableDictionary *) iosOptions;
 - (void)unregister:(CDVInvokedUrlCommand*)command;
 - (void)subscribe:(CDVInvokedUrlCommand*)command;
 - (void)unsubscribe:(CDVInvokedUrlCommand*)command;
 - (void)getSavedNotifications:(CDVInvokedUrlCommand*)command;
+- (void)removeSavedNotifications:(CDVInvokedUrlCommand*)command;
 - (void)setNotificationPreferences:(CDVInvokedUrlCommand*)command;
 - (void)clearNotification:(CDVInvokedUrlCommand*)command;
 - (void)didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken;
 - (void)didFailToRegisterForRemoteNotificationsWithError:(NSError *)error;
 - (void)setNotificationMessage:(NSDictionary *)notification;
+- (void)reConfigure:(NSDictionary *)newParams;
 - (void)notificationReceived;
+- (void)addTimestamp: (NSMutableDictionary *)data;
+- (void)playSoundVibrate: (NSMutableDictionary *)additionalData;
+- (void)playCustomSound:(NSString *)soundFileName;
+- (void)triggerVibration;
 
 // VoIP Features
 - (void)pushRegistry:(PKPushRegistry *)registry didUpdatePushCredentials:(PKPushCredentials *)credentials forType:(NSString *)type;
