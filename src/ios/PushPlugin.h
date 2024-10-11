@@ -33,6 +33,7 @@
 {
     NSDictionary *notificationMessage;
     BOOL    isInline;
+    BOOL isNotificationReceivedCalled;
     BOOL    clearBadge;
     BOOL    forceShow;
 
@@ -44,6 +45,7 @@
 
 @property (nonatomic, strong) NSDictionary *notificationMessage;
 @property BOOL isInline;
+@property BOOL isNotificationReceivedCalled;
 @property BOOL coldstart;
 @property BOOL clearBadge;
 @property BOOL forceShow;

@@ -62,6 +62,7 @@
 @synthesize usesFCM;
 @synthesize fcmSenderId;
 @synthesize fcmTopics;
+@synthesize isNotificationReceivedCalled;
 
 - (void)initRegistration {
     [[FIRMessaging messaging] tokenWithCompletion:^(NSString *token, NSError *error) {
@@ -140,6 +141,7 @@
 }
 
 - (void)init:(CDVInvokedUrlCommand *)command {
+    isNotificationReceivedCalled = false;
     NSMutableDictionary* options = [command.arguments objectAtIndex:0];
     NSMutableDictionary* iosOptions = [options objectForKey:@"ios"];
     // SAVE DEFAULT FOR IOS OPTIONS:===========================================>
@@ -437,11 +439,12 @@
 }
 
 - (void)notificationReceived {
+    isNotificationReceivedCalled = true;
     NSLog(@"[PushPlugin] PushPlugin.notificationReceived called");
     
     if (notificationMessage && self.callbackId != nil)
     {
-        NSMutableDictionary* message = [NSMutableDictionary dictionaryWithCapacity:4];
+        NSMutableDictionary* message = [NSMutableDictionary dictionaryWithCapacity:5];
         NSMutableDictionary* additionalData = [NSMutableDictionary dictionaryWithCapacity:4];
         
         for (id key in notificationMessage) {
@@ -512,17 +515,21 @@
         
         self.coldstart = NO;
         self.notificationMessage = nil;
+        isNotificationReceivedCalled = false;
     }
 }
 
 // Method to play sound & vibrate
 - (void) addTimestamp: (NSMutableDictionary *)data {
-    NSLog(@"addTimestamp called");
-    NSDate *currentDate = [NSDate date];
-    NSTimeInterval timeInSeconds = [currentDate timeIntervalSince1970];
-    long long timestamp = (long long)(timeInSeconds * 1000);
-    NSNumber *timestampNumber = [NSNumber numberWithLongLong:timestamp];
-    [data setObject:timestampNumber forKey:@"timestamp"];
+    NSLog(@"[PushPlugin] addTimestamp called data = %@", data);
+    if(data != NULL){
+        NSDate *currentDate = [NSDate date];
+        NSTimeInterval timeInSeconds = [currentDate timeIntervalSince1970];
+        long long timestamp = (long long)(timeInSeconds * 1000);
+        NSNumber *timestampNumber = [NSNumber numberWithLongLong:timestamp];
+        NSLog(@"[PushPlugin] addTimestamp timestampNumber = %@", timestampNumber);
+        [data setObject:timestampNumber forKey:@"timestamp"];
+    }
 }
 
 // Method to play sound & vibrate
@@ -578,13 +585,13 @@
     NSError *setCategoryError = nil;
     [session setCategory:AVAudioSessionCategoryAmbient error:&setCategoryError];
     if (setCategoryError) {
-        NSLog(@"Error setting audio session category: %@", setCategoryError.localizedDescription);
+        NSLog(@"[PushPlugin] Error setting audio session category: %@", setCategoryError.localizedDescription);
     }
     
     NSError *activationError = nil;
     [session setActive:YES error:&activationError];
     if (activationError) {
-        NSLog(@"Error activating audio session: %@", activationError.localizedDescription);
+        NSLog(@"[PushPlugin] Error activating audio session: %@", activationError.localizedDescription);
     }
     SystemSoundID soundID = 1007;
     if(![soundFileName isEqualToString:@"default"] && ![soundFileName isEqualToString:@"ringtone"]){
@@ -606,6 +613,7 @@
 
 // Method to trigger vibration
 - (void)triggerVibration {
+    NSLog(@"[PushPlugin] PushPlugin.triggerVibration called");
     AudioServicesPlaySystemSound(kSystemSoundID_Vibrate);
 }
 
@@ -648,6 +656,7 @@
 }
 
 // Method to reconfigure(reInit) plugin, CALLED IF DEFAULTS CHANGES(vibration, etc):
+/*
 - (void)reConfigure:(NSDictionary *)newParams {
     NSLog(@"[PushPlugin] reConfigure called, newParams = %@", newParams);
     //GET USER PREFS:
@@ -682,6 +691,7 @@
         [self doInit:iosOptions];
     }
 }
+ */
 
 
 - (void)clearNotification:(CDVInvokedUrlCommand *)command {
