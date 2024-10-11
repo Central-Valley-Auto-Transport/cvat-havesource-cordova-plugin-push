@@ -37,10 +37,7 @@
        A) Click opens app, shows popup & saves notification
        B) Open app shows popup and saves notification
  */
-/* ERRORS
-   1) Not playing sound
-   2) Not saving data(calling push.on("notification") when opening app regardless if notification clicked
- */
+
 #import "PushPlugin.h"
 #import "AppDelegate+notification.h"
 #import <AudioToolbox/AudioToolbox.h>
@@ -654,44 +651,6 @@
     CDVPluginResult *commandResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Set notification preferences."];
     [self.commandDelegate sendPluginResult:commandResult callbackId:command.callbackId];
 }
-
-// Method to reconfigure(reInit) plugin, CALLED IF DEFAULTS CHANGES(vibration, etc):
-/*
-- (void)reConfigure:(NSDictionary *)newParams {
-    NSLog(@"[PushPlugin] reConfigure called, newParams = %@", newParams);
-    //GET USER PREFS:
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    NSMutableDictionary *notificationPreferences = [defaults objectForKey:@"notificationPreferences"];
-    NSLog(@"[PushPlugin] reConfigure saved notificationPreferences = %@", notificationPreferences);
-    BOOL isUserConfigured = [notificationPreferences[@"is_user_configured"] boolValue];
-    BOOL isDefaultSound = [notificationPreferences[@"is_sound"] boolValue];
-    BOOL isDefaultVibration = [notificationPreferences[@"is_vibration"] boolValue];
-    NSString *defaultSound = [notificationPreferences objectForKey:@"sound"];
-    
-    NSString *newSound = [newParams objectForKey:@"sound"];
-    BOOL newIsVibration = [[newParams objectForKey:@"is_vibration"] boolValue];
-    NSLog(@"[PushPlugin] reConfigure newSound = %@, newIsVibration = %d", newSound, newIsVibration);
-    BOOL isReconfigure = false;
-    if(isUserConfigured == false && (newSound != defaultSound || newIsVibration != isDefaultVibration)){
-        isReconfigure = true;
-    }
-    
-    if(isReconfigure==true){
-        BOOL newIsSound = [newSound isEqual:@"NONE"]? NO:YES;
-        NSMutableDictionary *iosDefaults = [defaults objectForKey:@"iosDefaults"];
-        NSMutableDictionary* iosOptions = [[NSMutableDictionary alloc] init];
-        [iosOptions setObject:[iosOptions objectForKey:@"senderId"] forKey:@"senderId"];
-        [iosOptions setObject:[iosOptions objectForKey:@"icon"] forKey:@"icon"];
-        [iosOptions setObject:[NSNumber numberWithBool: [[iosOptions objectForKey:@"alert"] boolValue]] forKey:@"alert"];
-        [iosOptions setObject:[NSNumber numberWithBool: [[iosOptions objectForKey:@"badge"] boolValue]] forKey:@"badge"];
-        [iosOptions setObject:[NSNumber numberWithBool: newIsSound] forKey:@"is_sound"];
-        [iosOptions setObject:newSound forKey:@"sound"];
-        [iosOptions setObject:[NSNumber numberWithBool: newIsVibration] forKey:@"is_vibration"];
-        NSLog(@"[PushPlugin] reConfigure calling doInit...");
-        [self doInit:iosOptions];
-    }
-}
- */
 
 
 - (void)clearNotification:(CDVInvokedUrlCommand *)command {

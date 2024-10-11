@@ -83,42 +83,18 @@ NSString *const pushPluginApplicationDidBecomeActiveNotification = @"pushPluginA
 
 - (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
     PushPlugin *pushHandler = [self getCommandInstance:@"PushNotification"];
-    NSLog(@"[PushPlugin] didReceiveRemoteNotification with fetchCompletionHandler, isNotificationReceivedCalled = %d, application.applicationState=%ld", pushHandler.isNotificationReceivedCalled, (long)application.applicationState);//, userInfo = %@", userInfo);
+    NSLog(@"[PushPlugin] didReceiveRemoteNotification with fetchCompletionHandler, isNotificationReceivedCalled = %d, application.applicationState=%ld, userInfo = %@", pushHandler.isNotificationReceivedCalled, (long)application.applicationState, userInfo);
     if(pushHandler.isNotificationReceivedCalled == YES){
-        NSLog(@"[PushPlugin] didReceiveRemoteNotification pushHandler.isNotificationReceivedCalled TRUE, RESOLVING...");//, userInfo = %@",
+        NSLog(@"[PushPlugin] didReceiveRemoteNotification pushHandler.isNotificationReceivedCalled TRUE, RESOLVING...");
         return;
     }
     NSMutableDictionary *myUserInfo = [userInfo mutableCopy];
     [pushHandler addTimestamp:myUserInfo];
-    //SAVE NOTIFICATION INTO ARRAY IN USER DEFAULTS TO GET BACK LATER:
-    //[self saveNotification:userInfo];
-    //-----------------------------------------------------------------
     
     NSMutableDictionary *additionalData = [[NSMutableDictionary alloc] init];
     for (id key in userInfo) {
         [additionalData setObject:[userInfo objectForKey:key] forKey:key];
     }
-    //NSLog(@"[PushPlugin] didReceiveRemoteNotification additionalData = %@", additionalData);
-    //TEST FOR RECONFIGURE:
-    NSString *jsonPayloadString = [additionalData objectForKey:@"jsonPayload"];
-    NSData *jsonPayloadData = [jsonPayloadString dataUsingEncoding:NSUTF8StringEncoding];
-    NSError *error;
-    NSString *sound = @"default";
-    NSMutableDictionary *jsonPayload = [NSJSONSerialization JSONObjectWithData:jsonPayloadData options:NSJSONReadingMutableContainers error:&error];
-    if (error) {
-        NSLog(@"[PushPlugin] didReceiveRemoteNotification Error parsing JSON: %@", error.localizedDescription);
-    } else {
-        NSLog(@"[PushPlugin] didReceiveRemoteNotification jsonPayload = %@", jsonPayload);
-        sound = [jsonPayload objectForKey:@"sound"];
-        //bool isVibrate = [[jsonPayload objectForKey:@"vibration"] boolValue];
-        //NSMutableDictionary* newParams = [[NSMutableDictionary alloc] init];
-        //[newParams setObject:sound forKey:@"sound"];
-        //[newParams setObject:[NSNumber numberWithBool: isVibrate] forKey:@"is_vibration"];
-        //[pushHandler reConfigure:newParams];
-    }
-    
-    
-    
     
     // app is in the background or inactive, so only call notification callback if this is a silent push
     if (application.applicationState != UIApplicationStateActive) {
@@ -134,8 +110,8 @@ NSString *const pushPluginApplicationDidBecomeActiveNotification = @"pushPluginA
         } else if ([contentAvailable isKindOfClass:[NSNumber class]]) {
             silent = [contentAvailable integerValue];
         }
-        NSNumber *iosPayloadIsVibrate = userInfo[@"isVibrate"];
-        NSString *iosPayloadSound = userInfo[@"sound"];
+        NSNumber *iosPayloadIsVibrate = [aps objectForKey:@"isVibrate"];
+        NSString *iosPayloadSound = [aps objectForKey:@"sound"];
         NSLog(@"[PushPlugin] didReceiveRemoteNotification, APP NOT ACTIVE, silent = %ld, iosPayloadIsVibrate=%@, iosPayloadSound=%@", silent, iosPayloadIsVibrate, iosPayloadSound);
 
         if (silent == 1) {
@@ -178,7 +154,6 @@ NSString *const pushPluginApplicationDidBecomeActiveNotification = @"pushPluginA
         NSLog(@"[PushPlugin] didReceiveRemoteNotification, ACTIVE CALLING completionHandler...");
         if(pushHandler.isNotificationReceivedCalled == NO){
             pushHandler.notificationMessage = userInfo;
-            //pushHandler.isInline = YES;
             pushHandler.isInline = NO;
             [pushHandler notificationReceived];
         }else{
@@ -188,22 +163,6 @@ NSString *const pushPluginApplicationDidBecomeActiveNotification = @"pushPluginA
         //completionHandler(UIBackgroundFetchResultNewData);
     }
 }
-
-// Method to save notification data
-- (void)saveNotification:(NSMutableDictionary *)userInfo {
-    // Store it in NSUserDefaults
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    NSMutableArray *savedNotifications = [[defaults objectForKey:@"savedNotifications"] mutableCopy];
-    if (!savedNotifications) {
-        savedNotifications = [NSMutableArray array];
-    }
-    NSLog(@"[PushPlugin] saveNotification, saving notification: %@", userInfo);
-    [savedNotifications addObject:userInfo];
-    NSLog(@"[PushPlugin] saveNotification, savedNotifications = %@", savedNotifications);
-    [defaults setObject:savedNotifications forKey:@"savedNotifications"];
-    [defaults synchronize];
-}
-
 
 - (void)checkUserHasRemoteNotificationsEnabledWithCompletionHandler:(nonnull void (^)(BOOL))completionHandler
 {
@@ -243,10 +202,7 @@ NSString *const pushPluginApplicationDidBecomeActiveNotification = @"pushPluginA
     } else {
         NSLog(@"[PushPlugin] skip clear badge");
     }
-    //NSDictionary *mLaunchNotification = [[NSDictionary alloc] init];
-    //if(self.launchNotification){
-    //    mLaunchNotification = self.launchNotification;
-    //}
+
     NSLog(@"[PushPlugin] pushPluginOnApplicationDidBecomeActive launchNotification = %@", self.launchNotification);
     if (self.launchNotification) {
         pushHandler.isInline = NO;
