@@ -339,6 +339,9 @@ module.exports = {
   removeSavedNotifications(successCallback, errorCallback, preferences){
     exec(successCallback, errorCallback, 'PushNotification', 'removeSavedNotifications', []);
   },    
+  deleteInstanceId: (successCallback, errorCallback) => {
+    exec(successCallback, errorCallback, 'PushNotification', 'deleteInstanceId', [channelId]);
+  },
   deleteChannel: function deleteChannel(successCallback, errorCallback, channelId) {
     exec(successCallback, errorCallback, 'PushNotification', 'deleteChannel', [channelId]);
   },

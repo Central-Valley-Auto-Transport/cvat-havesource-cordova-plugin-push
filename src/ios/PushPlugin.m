@@ -82,6 +82,21 @@
     }];
 }
 
+
+// Method to delete Firebase Instance ID
+- (void)deleteInstanceId:(CDVInvokedUrlCommand *)command {
+    [[FIRMessaging messaging] deleteFCMTokenForSenderID:fcmSenderId
+                                             completion:^(NSError * _Nullable error) {
+        NSString* pluginResult;
+        if (error != nil) {
+            pluginResult = error.localizedDescription;
+        } else {
+            pluginResult = @"Instance ID deleted successfully";
+        }
+        [self successWithMessage:command.callbackId withMsg:pluginResult];
+    }];
+}
+
 //  FCM refresh token
 //  Unclear how this is testable under normal circumstances
 - (void)onTokenRefresh {
@@ -91,6 +106,7 @@
     [self initRegistration];
 #endif
 }
+
 
 - (void)unregister:(CDVInvokedUrlCommand *)command {
     NSArray* topics = [command argumentAtIndex:0];

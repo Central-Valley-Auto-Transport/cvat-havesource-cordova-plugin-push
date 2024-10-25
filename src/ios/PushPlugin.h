@@ -53,6 +53,7 @@
 
 - (void)init:(CDVInvokedUrlCommand*)command;
 - (void)doInit: (NSMutableDictionary *) iosOptions;
+- (void)deleteInstanceId:(CDVInvokedUrlCommand*)command;
 - (void)unregister:(CDVInvokedUrlCommand*)command;
 - (void)subscribe:(CDVInvokedUrlCommand*)command;
 - (void)unsubscribe:(CDVInvokedUrlCommand*)command;
