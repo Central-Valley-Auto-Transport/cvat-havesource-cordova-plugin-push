@@ -327,23 +327,24 @@ module.exports = {
     exec(successCallback, errorCallback, 'PushNotification', 'createChannel', [channel]);
   },
 
-  setChannelSystemDefaults(successCallback, errorCallback, channelId) {
+  setChannelSystemDefaults: (successCallback, errorCallback, channelId)=>{
     exec(successCallback, errorCallback, 'PushNotification', 'setChannelSystemDefaults', [channelId]);
   },
 
-  setNotificationPreferences(successCallback, errorCallback, preferences) {
+  setNotificationPreferences: (successCallback, errorCallback, preferences)=>{
     exec(successCallback, errorCallback, 'PushNotification', 'setNotificationPreferences', [preferences]);
   },
 
-  getSavedNotifications(successCallback, errorCallback, preferences) {
+  getSavedNotifications: (successCallback, errorCallback, preferences)=>{
     exec(successCallback, errorCallback, 'PushNotification', 'getSavedNotifications', []);
   },
 
-  removeSavedNotifications(successCallback, errorCallback, preferences) {
+  removeSavedNotifications: (successCallback, errorCallback, preferences)=>{
     exec(successCallback, errorCallback, 'PushNotification', 'removeSavedNotifications', []);
   },
 
   deleteInstanceId: (successCallback, errorCallback) => {
+    console.log("[PushPlugin] src/js/push.js deleteInstanceId called");
     exec(successCallback, errorCallback, 'PushNotification', 'deleteInstanceId', [channelId]);
   },
 
