@@ -61,6 +61,7 @@
 @synthesize fcmTopics;
 @synthesize isNotificationReceivedCalled;
 
+
 - (void)initRegistration {
     [[FIRMessaging messaging] tokenWithCompletion:^(NSString *token, NSError *error) {
         if (error != nil) {
@@ -622,6 +623,33 @@
     AudioServicesPlaySystemSoundWithCompletion(soundID, ^{
         AudioServicesDisposeSystemSoundID(soundID);
     });
+}
+
+- (void)playDefaultNotification:(CDVInvokedUrlCommand *)command {
+    AudioServicesPlaySystemSound(1007); // 1007 is the system sound ID for the default notification
+    [NSTimer scheduledTimerWithTimeInterval:3.0
+                                     target:self
+                                   selector:@selector(stopSound)
+                                   userInfo:nil
+                                    repeats:NO];
+    NSString* pluginResult = @"Played default notification sound successfully";
+    [self successWithMessage:command.callbackId withMsg:pluginResult];
+}
+
+- (void)playDefaultRingtone:(CDVInvokedUrlCommand *)command {
+    AudioServicesPlaySystemSound(1315); // 1315 is the system sound ID for the default ringtone
+    [NSTimer scheduledTimerWithTimeInterval:3.0
+                                     target:self
+                                   selector:@selector(stopSound)
+                                   userInfo:nil
+                                    repeats:NO];
+    NSString* pluginResult = @"Played default ringtone sound successfully";
+    [self successWithMessage:command.callbackId withMsg:pluginResult];
+}
+
+- (void)stopSound {
+    // Playing system sound ID 4095, which is an empty (silent) sound
+    AudioServicesPlaySystemSound(4095);
 }
 
 // Method to trigger vibration

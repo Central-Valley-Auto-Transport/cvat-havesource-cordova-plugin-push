@@ -28,6 +28,7 @@
 #import <Cordova/CDV.h>
 #import <Cordova/CDVPlugin.h>
 #import <PushKit/PushKit.h>
+#import <AVFoundation/AVFoundation.h>
 
 @interface PushPlugin : CDVPlugin
 {
@@ -69,6 +70,9 @@
 - (void)addTimestamp: (NSMutableDictionary *)data;
 - (void)playSoundVibrate: (NSMutableDictionary *)additionalData;
 - (void)playCustomSound:(NSString *)soundFileName;
+- (void)playDefaultNotification:(CDVInvokedUrlCommand*)command;
+- (void)playDefaultRingtone:(CDVInvokedUrlCommand*)command;
+
 - (void)triggerVibration;
 
 // VoIP Features
@@ -79,5 +83,6 @@
 @property(nonatomic, assign) BOOL usesFCM;
 @property(nonatomic, strong) NSString *fcmSenderId;
 @property(nonatomic, strong) NSArray *fcmTopics;
+@property (nonatomic, strong) AVAudioPlayer *audioPlayer;
 
 @end
