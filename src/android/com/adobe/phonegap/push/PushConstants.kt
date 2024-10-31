@@ -115,4 +115,6 @@ object PushConstants {
   const val USER_CONFIGURED: String = "user_configured"
   const val TIMESTAMP: String = "timestamp"
   const val SET_CHANNEL_SYSTEM_DEFAULTS: String = "setChannelSystemDefaults"
+  const val PLAY_DEFAULT_NOTIFICATION: String = "playDefaultNotification"
+  const val PLAY_DEFAULT_RINGTONE: String = "playDefaultRingtone"
 }

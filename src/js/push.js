@@ -348,6 +348,16 @@ module.exports = {
     exec(successCallback, errorCallback, 'PushNotification', 'deleteInstanceId', [channelId]);
   },
 
+  playDefaultNotification: (successCallback, errorCallback) => {
+    console.log("[PushPlugin] src/js/push.js playDefaultNotification called");
+    exec(successCallback, errorCallback, 'PushNotification', 'playDefaultNotification', []);
+  },
+
+  playDefaultRingtone: (successCallback, errorCallback) => {
+    console.log("[PushPlugin] src/js/push.js playDefaultRingtone called");
+    exec(successCallback, errorCallback, 'PushNotification', 'playDefaultRingtone', []);
+  },
+
   deleteChannel: (successCallback, errorCallback, channelId) => {
     exec(successCallback, errorCallback, 'PushNotification', 'deleteChannel', [channelId]);
   },

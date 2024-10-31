@@ -346,6 +346,14 @@ module.exports = {
   deleteChannel: function deleteChannel(successCallback, errorCallback, channelId) {
     exec(successCallback, errorCallback, 'PushNotification', 'deleteChannel', [channelId]);
   },
+  playDefaultNotification: (successCallback, errorCallback) => {
+    console.log("[PushPlugin] www/push.js playDefaultNotification called");
+    exec(successCallback, errorCallback, 'PushNotification', 'playDefaultNotification', []);
+  },
+  playDefaultRingtone: (successCallback, errorCallback) => {
+    console.log("[PushPlugin] www/push.js playDefaultRingtone called");
+    exec(successCallback, errorCallback, 'PushNotification', 'playDefaultRingtone', []);
+  },  
   listChannels: function listChannels(successCallback, errorCallback) {
     exec(successCallback, errorCallback, 'PushNotification', 'listChannels', []);
   },

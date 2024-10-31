@@ -11,9 +11,14 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Resources.NotFoundException
 import android.media.AudioAttributes
+import android.media.AudioManager
+import android.media.Ringtone
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -480,6 +485,9 @@ class PushPlugin : CordovaPlugin() {
       PushConstants.DELETE_CHANNEL -> executeActionDeleteChannel(data, callbackContext)
       PushConstants.LIST_CHANNELS -> executeActionListChannels(callbackContext)
       PushConstants.CLEAR_NOTIFICATION -> executeActionClearNotification(data, callbackContext)
+      PushConstants.PLAY_DEFAULT_NOTIFICATION -> executeActionPlayDefaultNotificationSound(data, callbackContext)
+      PushConstants.PLAY_DEFAULT_RINGTONE -> executeActionPlayDefaultRingtoneSound(data, callbackContext)
+
       else -> {
         Log.e(TAG, "Execute: Invalid Action $action")
         callbackContext.sendPluginResult(PluginResult(PluginResult.Status.INVALID_ACTION))
@@ -521,7 +529,7 @@ class PushPlugin : CordovaPlugin() {
         senderID = activity.getString(senderIdResId)
 
         // If no NotificationChannels exist create the default one
-        createDefaultNotificationChannelIfNeeded(jo)
+        //createDefaultNotificationChannelIfNeeded(jo)
 
         Log.v(TAG, formatLogMessage("JSONObject=$jo"))
         Log.v(TAG, formatLogMessage("senderID=$senderID"))
@@ -881,6 +889,30 @@ class PushPlugin : CordovaPlugin() {
         callbackContext.error(e.message)
       }
     }
+  }
+
+  private fun executeActionPlayDefaultNotificationSound(data: JSONArray, callbackContext: CallbackContext) {
+    val notification: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+    val ringtone: Ringtone = RingtoneManager.getRingtone(applicationContext, notification)
+    ringtone?.play()
+    val durationMillis: Long = 3000
+    ringtone.setStreamType(AudioManager.STREAM_NOTIFICATION)
+    Handler(Looper.getMainLooper()).postDelayed({
+      ringtone.stop()
+    }, durationMillis)
+    callbackContext.success()
+  }
+
+  private fun executeActionPlayDefaultRingtoneSound(data: JSONArray, callbackContext: CallbackContext) {
+    val ringtoneUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+    val ringtone: Ringtone = RingtoneManager.getRingtone(applicationContext, ringtoneUri)
+    ringtone?.play()
+    val durationMillis: Long = 3000
+    ringtone.setStreamType(AudioManager.STREAM_NOTIFICATION)
+    Handler(Looper.getMainLooper()).postDelayed({
+      ringtone.stop()
+    }, durationMillis)
+    callbackContext.success()
   }
 
   /**

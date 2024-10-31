@@ -72,5 +72,7 @@
       "android",
       "browser"
     ]
-  }
+  },
+  "main": "www/index.js"
+
 }
