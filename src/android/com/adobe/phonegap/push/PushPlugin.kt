@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.content.res.Resources.NotFoundException
 import android.media.AudioAttributes
 import android.media.AudioManager
+import android.media.MediaPlayer
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
@@ -210,6 +211,31 @@ class PushPlugin : CordovaPlugin() {
      */
     val isActive: Boolean
       get() = gWebView != null
+
+    fun playDefaultSound(context: Context, soundType: String){
+      var ringtoneType: Int = 0
+      ringtoneType = if(soundType!=null && soundType == "notification") RingtoneManager.TYPE_NOTIFICATION else RingtoneManager.TYPE_RINGTONE
+      val notification: Uri = RingtoneManager.getDefaultUri(ringtoneType)
+      val ringtone: Ringtone = RingtoneManager.getRingtone(context, notification)
+      ringtone?.play()
+      val durationMillis: Long = 3000
+      //ringtone.setStreamType(AudioManager.STREAM_NOTIFICATION)
+      Handler(Looper.getMainLooper()).postDelayed({
+        ringtone.stop()
+      }, durationMillis)
+    }
+
+    fun playCustomSound(context: Context, sound: String){
+      val scheme = ContentResolver.SCHEME_ANDROID_RESOURCE
+      val packageName = context.packageName
+      var uri:Uri = Uri.parse("${scheme}://$packageName/raw/$sound")
+      var mediaPlayer: MediaPlayer? = MediaPlayer.create(context, uri)
+      mediaPlayer?.start()
+      val durationMillis: Long = 3000
+      Handler(Looper.getMainLooper()).postDelayed({
+        mediaPlayer?.release()
+      }, durationMillis)
+    }
   }
 
   private val activity: Activity
@@ -320,10 +346,10 @@ class PushPlugin : CordovaPlugin() {
           /**
            * Sound Settings
            */
-          val sound = it.getString(PushConstants.SOUND)
-          Log.d(TAG, "createChannel sound = $sound")
-          val (soundUri, audioAttributes) = getNotificationChannelSound(it)
-          setSound(soundUri, audioAttributes)
+          //val sound = it.getString(PushConstants.SOUND)
+          //Log.d(TAG, "createChannel sound = $sound")
+          //val (soundUri, audioAttributes) = getNotificationChannelSound(it)
+          //setSound(soundUri, audioAttributes)
 
 
           /**
@@ -891,27 +917,14 @@ class PushPlugin : CordovaPlugin() {
     }
   }
 
+
   private fun executeActionPlayDefaultNotificationSound(data: JSONArray, callbackContext: CallbackContext) {
-    val notification: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-    val ringtone: Ringtone = RingtoneManager.getRingtone(applicationContext, notification)
-    ringtone?.play()
-    val durationMillis: Long = 3000
-    ringtone.setStreamType(AudioManager.STREAM_NOTIFICATION)
-    Handler(Looper.getMainLooper()).postDelayed({
-      ringtone.stop()
-    }, durationMillis)
+    playDefaultSound( applicationContext, "notification")
     callbackContext.success()
   }
 
   private fun executeActionPlayDefaultRingtoneSound(data: JSONArray, callbackContext: CallbackContext) {
-    val ringtoneUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-    val ringtone: Ringtone = RingtoneManager.getRingtone(applicationContext, ringtoneUri)
-    ringtone?.play()
-    val durationMillis: Long = 3000
-    ringtone.setStreamType(AudioManager.STREAM_NOTIFICATION)
-    Handler(Looper.getMainLooper()).postDelayed({
-      ringtone.stop()
-    }, durationMillis)
+    playDefaultSound(applicationContext,"ringtone")
     callbackContext.success()
   }
 

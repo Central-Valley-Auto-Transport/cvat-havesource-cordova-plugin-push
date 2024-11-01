@@ -142,7 +142,9 @@ class FCMService : FirebaseMessagingService() {
       val isVibrate:Boolean = params["isVibrate"] as Boolean
       notificationChannel.description = "General Notifications"
       notificationChannel.enableLights(true)
+
       notificationChannel.enableVibration(isVibrate)
+      /*
       val sound:String = params["sound"].toString()
       Log.d(TAG, "recreateChannel sound = $sound")
       if(sound!=null && sound!=PushConstants.SOUND_NONE) {
@@ -167,9 +169,10 @@ class FCMService : FirebaseMessagingService() {
         Log.d(TAG, "recreateChannel setting sound to be played on notification channel")
         notificationChannel.setSound(soundUri, audioAttributes)
       }else{
+       */
         Log.d(TAG, "recreateChannel setting sound to NOT be played on notification channel")
         notificationChannel.setSound(null, null)
-      }
+      //}
       //val notificationManager = getSystemService(NotificationManager::class.java)
       notificationManager.createNotificationChannel(notificationChannel)
     }
@@ -199,6 +202,11 @@ class FCMService : FirebaseMessagingService() {
       vibration =  jsonObject.optBoolean(PushConstants.CHANNEL_VIBRATION, true)
     }catch(e:Exception){}
 
+    if(sound == "default" || sound == "ringtone"){
+      PushPlugin.playDefaultSound(applicationContext, sound)
+    }else{
+      PushPlugin.playCustomSound(applicationContext, sound)
+    }
     Log.d(TAG, "onMessageReceived (from=$from)")
     Log.d(TAG, "onMessageReceived channelId = $channelId")
 
