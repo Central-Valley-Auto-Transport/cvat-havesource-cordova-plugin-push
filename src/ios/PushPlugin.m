@@ -647,10 +647,29 @@
     [self successWithMessage:command.callbackId withMsg:pluginResult];
 }
 
+- (void)playSoundFile: (CDVInvokedUrlCommand *)command {
+    NSString* sound = [command.arguments objectAtIndex:0];
+    NSString *path = [[NSBundle mainBundle] pathForResource:sound ofType:@"caf"];
+    NSURL *fileURL = [NSURL fileURLWithPath:path];
+    NSError *error = nil;
+    self.audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:fileURL error:&error];
+    if (error) {
+        NSString* pluginResult = [NSString stringWithFormat:@"Error initializing player: %@", error.localizedDescription];
+        [self successWithMessage:command.callbackId withMsg:pluginResult];
+        return;
+    }else{
+        [self.audioPlayer prepareToPlay];
+        [self.audioPlayer play];
+        [self successWithMessage:command.callbackId withMsg:@"Successfully played sound"];
+    }
+}
+
 - (void)stopSound {
     // Playing system sound ID 4095, which is an empty (silent) sound
     AudioServicesPlaySystemSound(4095);
 }
+
+
 
 // Method to trigger vibration
 - (void)triggerVibration {

@@ -358,6 +358,11 @@ module.exports = {
     exec(successCallback, errorCallback, 'PushNotification', 'playDefaultRingtone', []);
   },
 
+  playSoundFile: (successCallback, errorCallback, soundFile) => {
+    console.log("[PushPlugin] src/js/push.js playSoundFile called");
+    exec(successCallback, errorCallback, 'PushNotification', 'playSoundFile', [soundFile]);
+  },
+
   deleteChannel: (successCallback, errorCallback, channelId) => {
     exec(successCallback, errorCallback, 'PushNotification', 'deleteChannel', [channelId]);
   },

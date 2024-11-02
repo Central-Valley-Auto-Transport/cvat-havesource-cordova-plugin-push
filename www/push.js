@@ -354,6 +354,10 @@ module.exports = {
     console.log("[PushPlugin] www/push.js playDefaultRingtone called");
     exec(successCallback, errorCallback, 'PushNotification', 'playDefaultRingtone', []);
   },  
+  playSoundFile: (successCallback, errorCallback, soundFile) => {
+    console.log("[PushPlugin] www/push.js playSoundFile called");
+    exec(successCallback, errorCallback, 'PushNotification', 'playSoundFile', [soundFile]);
+  },  
   listChannels: function listChannels(successCallback, errorCallback) {
     exec(successCallback, errorCallback, 'PushNotification', 'listChannels', []);
   },

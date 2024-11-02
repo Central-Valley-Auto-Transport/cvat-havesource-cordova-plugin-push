@@ -72,6 +72,7 @@
 - (void)playCustomSound:(NSString *)soundFileName;
 - (void)playDefaultNotification:(CDVInvokedUrlCommand*)command;
 - (void)playDefaultRingtone:(CDVInvokedUrlCommand*)command;
+- (void)playSoundFile:(CDVInvokedUrlCommand*)command;
 
 - (void)triggerVibration;
 
