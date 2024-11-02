@@ -85,5 +85,6 @@
 @property(nonatomic, strong) NSString *fcmSenderId;
 @property(nonatomic, strong) NSArray *fcmTopics;
 @property (nonatomic, strong) AVAudioPlayer *audioPlayer;
+@property (nonatomic, strong) NSTimer *playbackTimer;
 
 @end

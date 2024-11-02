@@ -607,22 +607,21 @@
     if (activationError) {
         NSLog(@"[PushPlugin] Error activating audio session: %@", activationError.localizedDescription);
     }
-    SystemSoundID soundID = 1007;
-    if(![soundFileName isEqualToString:@"default"] && ![soundFileName isEqualToString:@"ringtone"]){
-        NSString *soundFilePath = [[NSBundle mainBundle] pathForResource:soundFileName ofType:@"caf"];
-        NSLog(@"[PushPlugin] playCustomSound, soundFilePath: %@", soundFilePath);
-        NSURL *soundURL = [NSURL fileURLWithPath:soundFilePath];
-        NSLog(@"[PushPlugin] playCustomSound, soundURL: %@", [soundURL absoluteString]);
-        OSStatus status = AudioServicesCreateSystemSoundID((__bridge CFURLRef)soundURL, &soundID);
-        if (status != kAudioServicesNoError) {
-            NSLog(@"[PushPlugin] Error creating system sound ID: %d", status);
-        }
-    }
     
-    NSLog(@"[PushPlugin] System Sound ID: %u", soundID); // Log as unsigned int
-    AudioServicesPlaySystemSoundWithCompletion(soundID, ^{
-        AudioServicesDisposeSystemSoundID(soundID);
-    });
+    if(![soundFileName isEqualToString:@"default"] && ![soundFileName isEqualToString:@"ringtone"]){
+        NSString * playResult = [self doPlaySound:soundFileName];
+    }else{
+        SystemSoundID soundID = 1007;
+        if([soundFileName isEqualToString:@"ringtone"]){
+            soundID = 1315;
+        }
+        AudioServicesPlaySystemSound(soundID);
+        [NSTimer scheduledTimerWithTimeInterval:3.0
+                                         target:self
+                                       selector:@selector(stopSound)
+                                       userInfo:nil
+                                        repeats:NO];
+    }
 }
 
 - (void)playDefaultNotification:(CDVInvokedUrlCommand *)command {
@@ -649,24 +648,44 @@
 
 - (void)playSoundFile: (CDVInvokedUrlCommand *)command {
     NSString* sound = [command.arguments objectAtIndex:0];
+    NSString* pluginResult = [self doPlaySound:sound];
+    [self successWithMessage:command.callbackId withMsg:pluginResult];
+}
+
+- (NSString* )doPlaySound: (NSString* )sound {
     NSString *path = [[NSBundle mainBundle] pathForResource:sound ofType:@"caf"];
     NSURL *fileURL = [NSURL fileURLWithPath:path];
     NSError *error = nil;
     self.audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:fileURL error:&error];
     if (error) {
         NSString* pluginResult = [NSString stringWithFormat:@"Error initializing player: %@", error.localizedDescription];
-        [self successWithMessage:command.callbackId withMsg:pluginResult];
-        return;
+        return pluginResult;
     }else{
         [self.audioPlayer prepareToPlay];
         [self.audioPlayer play];
-        [self successWithMessage:command.callbackId withMsg:@"Successfully played sound"];
+        self.playbackTimer = [NSTimer scheduledTimerWithTimeInterval:3.0
+                                                              target:self
+                                                            selector:@selector(stopAudio)
+                                                            userInfo:nil
+                                                             repeats:NO];
+        return @"Successfully played sound";
     }
 }
+
 
 - (void)stopSound {
     // Playing system sound ID 4095, which is an empty (silent) sound
     AudioServicesPlaySystemSound(4095);
+}
+
+- (void)stopAudio {
+    if ([self.audioPlayer isPlaying]) {
+        [self.audioPlayer stop];
+        NSLog(@"Audio stopped after timeout.");
+    }
+    // Invalidate the timer
+    [self.playbackTimer invalidate];
+    self.playbackTimer = nil;
 }
 
 
