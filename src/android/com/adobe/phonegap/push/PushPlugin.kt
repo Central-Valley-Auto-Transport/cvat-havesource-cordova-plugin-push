@@ -219,7 +219,6 @@ class PushPlugin : CordovaPlugin() {
       val ringtone: Ringtone = RingtoneManager.getRingtone(context, notification)
       ringtone?.play()
       val durationMillis: Long = 3000
-      //ringtone.setStreamType(AudioManager.STREAM_NOTIFICATION)
       Handler(Looper.getMainLooper()).postDelayed({
         ringtone.stop()
       }, durationMillis)
@@ -513,6 +512,7 @@ class PushPlugin : CordovaPlugin() {
       PushConstants.CLEAR_NOTIFICATION -> executeActionClearNotification(data, callbackContext)
       PushConstants.PLAY_DEFAULT_NOTIFICATION -> executeActionPlayDefaultNotificationSound(data, callbackContext)
       PushConstants.PLAY_DEFAULT_RINGTONE -> executeActionPlayDefaultRingtoneSound(data, callbackContext)
+      PushConstants.PLAY_SOUND_FILE -> executeActionPlaySoundFile(data, callbackContext)
 
       else -> {
         Log.e(TAG, "Execute: Invalid Action $action")
@@ -925,6 +925,12 @@ class PushPlugin : CordovaPlugin() {
 
   private fun executeActionPlayDefaultRingtoneSound(data: JSONArray, callbackContext: CallbackContext) {
     playDefaultSound(applicationContext,"ringtone")
+    callbackContext.success()
+  }
+
+  private fun executeActionPlaySoundFile(data: JSONArray, callbackContext: CallbackContext) {
+    val sound:String = data.getString(0)
+    playCustomSound(applicationContext,sound)
     callbackContext.success()
   }
 
