@@ -27,7 +27,6 @@ import com.adobe.phonegap.push.PushPlugin.Companion.isActive
 import com.adobe.phonegap.push.PushPlugin.Companion.isInForeground
 import com.adobe.phonegap.push.PushPlugin.Companion.sendExtras
 import com.adobe.phonegap.push.PushPlugin.Companion.setApplicationIconBadgeNumber
-import com.cvat.sbols.MainActivity
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import org.json.JSONArray
@@ -318,7 +317,11 @@ class FCMService : FirebaseMessagingService() {
     }
 
     // BUILD NOTIFICATION:
-    val intent = Intent(this, MainActivity::class.java)
+    val packageName = context.packageName
+    val className = "$packageName.MainActivity"
+    val clazz = Class.forName(className)
+
+    val intent = Intent(this, clazz::class.java)
     val pendingIntent: PendingIntent = PendingIntent.getActivity(
       context,
       0,
