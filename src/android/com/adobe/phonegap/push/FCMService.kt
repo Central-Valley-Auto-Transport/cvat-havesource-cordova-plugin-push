@@ -329,9 +329,12 @@ class FCMService : FirebaseMessagingService() {
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
     Log.d(TAG, "onMessageReceived creating NotificationCompat.Builder with currentChannelId = $currentChannelId")
+    val resourceName = "ic_launcher"
+    val resourceId = context.resources.getIdentifier(resourceName, "mipmap", context.packageName)
+
     val notificationBuilder: NotificationCompat.Builder = NotificationCompat.Builder(
       this, currentChannelId
-    ).setSmallIcon(com.cvat.sbols.R.mipmap.ic_launcher)
+    ).setSmallIcon(resourceId)
       .setContentTitle(myTitle)
       .setContentText(myMessage)
       .setAutoCancel(true)
