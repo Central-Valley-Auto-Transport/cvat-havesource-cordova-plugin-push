@@ -20,7 +20,7 @@ class PushNotification {
 
     // require options parameter
     if (typeof options === 'undefined') {
-      throw new Error('The options argument is required.');
+      throw new Error('[PushPlugin] The options argument is required.');
     }
 
     // store the options to this object instance
@@ -58,13 +58,13 @@ class PushNotification {
    */
   unregister(successCallback, errorCallback = () => { }, options) {
     if (typeof errorCallback !== 'function') {
-      console.log('PushNotification.unregister failure: failure parameter not a function');
+      console.log('[PushPlugin] PushNotification.unregister failure: failure parameter not a function');
       return;
     }
 
     if (typeof successCallback !== 'function') {
       console.log(
-        'PushNotification.unregister failure: success callback parameter must be a function'
+        '[PushPlugin] PushNotification.unregister failure: success callback parameter must be a function'
       );
       return;
     }
@@ -92,13 +92,13 @@ class PushNotification {
    */
   subscribe(topic, successCallback, errorCallback = () => { }) {
     if (typeof errorCallback !== 'function') {
-      console.log('PushNotification.subscribe failure: failure parameter not a function');
+      console.log('[PushPlugin] PushNotification.subscribe failure: failure parameter not a function');
       return;
     }
 
     if (typeof successCallback !== 'function') {
       console.log(
-        'PushNotification.subscribe failure: success callback parameter must be a function'
+        '[PushPlugin] PushNotification.subscribe failure: success callback parameter must be a function'
       );
       return;
     }
@@ -115,13 +115,13 @@ class PushNotification {
    */
   unsubscribe(topic, successCallback, errorCallback = () => { }) {
     if (typeof errorCallback !== 'function') {
-      console.log('PushNotification.unsubscribe failure: failure parameter not a function');
+      console.log('[PushPlugin] PushNotification.unsubscribe failure: failure parameter not a function');
       return;
     }
 
     if (typeof successCallback !== 'function') {
       console.log(
-        'PushNotification.unsubscribe failure: success callback parameter must be a function'
+        '[PushPlugin] PushNotification.unsubscribe failure: success callback parameter must be a function'
       );
       return;
     }
@@ -135,7 +135,7 @@ class PushNotification {
   setApplicationIconBadgeNumber(successCallback, errorCallback = () => { }, badge) {
     if (typeof errorCallback !== 'function') {
       console.log(
-        'PushNotification.setApplicationIconBadgeNumber failure: failure ' +
+        '[PushPlugin] PushNotification.setApplicationIconBadgeNumber failure: failure ' +
         'parameter not a function'
       );
       return;
@@ -143,7 +143,7 @@ class PushNotification {
 
     if (typeof successCallback !== 'function') {
       console.log(
-        'PushNotification.setApplicationIconBadgeNumber failure: success ' +
+        '[PushPlugin] PushNotification.setApplicationIconBadgeNumber failure: success ' +
         'callback parameter must be a function'
       );
       return;
@@ -161,7 +161,7 @@ class PushNotification {
   getApplicationIconBadgeNumber(successCallback, errorCallback = () => { }) {
     if (typeof errorCallback !== 'function') {
       console.log(
-        'PushNotification.getApplicationIconBadgeNumber failure: failure ' +
+        '[PushPlugin] PushNotification.getApplicationIconBadgeNumber failure: failure ' +
         'parameter not a function'
       );
       return;
@@ -169,7 +169,7 @@ class PushNotification {
 
     if (typeof successCallback !== 'function') {
       console.log(
-        'PushNotification.getApplicationIconBadgeNumber failure: success ' +
+        '[PushPlugin] PushNotification.getApplicationIconBadgeNumber failure: success ' +
         'callback parameter must be a function'
       );
       return;
@@ -185,14 +185,14 @@ class PushNotification {
   clearAllNotifications(successCallback = () => { }, errorCallback = () => { }) {
     if (typeof errorCallback !== 'function') {
       console.log(
-        'PushNotification.clearAllNotifications failure: failure parameter not a function'
+        '[PushPlugin] PushNotification.clearAllNotifications failure: failure parameter not a function'
       );
       return;
     }
 
     if (typeof successCallback !== 'function') {
       console.log(
-        'PushNotification.clearAllNotifications failure: success callback ' +
+        '[PushPlugin] PushNotification.clearAllNotifications failure: success callback ' +
         'parameter must be a function'
       );
       return;
@@ -211,7 +211,7 @@ class PushNotification {
     const idNumber = parseInt(id, 10);
     if (Number.isNaN(idNumber) || idNumber > Number.MAX_SAFE_INTEGER || idNumber < 0) {
       console.log(
-        'PushNotification.clearNotification failure: id parameter must' +
+        '[PushPlugin] PushNotification.clearNotification failure: id parameter must' +
         'be a valid integer.'
       );
       return;
@@ -235,6 +235,7 @@ class PushNotification {
    */
 
   on(eventName, callback) {
+    console.log("[PushPlugin] src/js/push.js on called, typeof(eventName) = " +  typeof(eventName) + ", typeof(callback) = " + typeof(callback));
     if (!Object.prototype.hasOwnProperty.call(this.handlers, eventName)) {
       this.handlers[eventName] = [];
     }
@@ -249,6 +250,7 @@ class PushNotification {
    */
 
   off(eventName, handle) {
+    console.log("[PushPlugin] src/js/push.js off called, typeof(eventName) = " +  typeof(eventName) + ", typeof(handle) = " + typeof(handle));
     if (Object.prototype.hasOwnProperty.call(this.handlers, eventName)) {
       const handleIndex = this.handlers[eventName].indexOf(handle);
       if (handleIndex >= 0) {
@@ -269,6 +271,7 @@ class PushNotification {
    */
 
   emit(...args) {
+    console.log("[PushPlugin] src/js/push.js emit called");
     const eventName = args.shift();
 
     if (!Object.prototype.hasOwnProperty.call(this.handlers, eventName)) {
@@ -289,12 +292,12 @@ class PushNotification {
 
   finish(successCallback = () => { }, errorCallback = () => { }, id = 'handler') {
     if (typeof successCallback !== 'function') {
-      console.log('finish failure: success callback parameter must be a function');
+      console.log('[PushPlugin] finish failure: success callback parameter must be a function');
       return;
     }
 
     if (typeof errorCallback !== 'function') {
-      console.log('finish failure: failure parameter not a function');
+      console.log('[PushPlugin] finish failure: failure parameter not a function');
       return;
     }
 
@@ -317,57 +320,68 @@ module.exports = {
    * @return {PushNotification} instance
    */
 
-  init: (options) => new PushNotification(options),
+  init: (options) => {
+    console.log("[PushPlugin] src/js/push.js init called, typeof(options) = " +  typeof(options));
+    return new PushNotification(options);
+  },
 
   hasPermission: (successCallback, errorCallback) => {
+    console.log("[PushPlugin] src/js/push.js hasPermission called, typeof(successCallback) = " +  typeof(successCallback) + ", typeof(errorCallback) = " + typeof(errorCallback));
     exec(successCallback, errorCallback, 'PushNotification', 'hasPermission', []);
   },
 
   createChannel: (successCallback, errorCallback, channel) => {
+    console.log("[PushPlugin] src/js/push.js createChannel called, typeof(successCallback) = " +  typeof(successCallback) + ", typeof(errorCallback) = " + typeof(errorCallback) + ", typeof(channel) = " + typeof(channel));
     exec(successCallback, errorCallback, 'PushNotification', 'createChannel', [channel]);
   },
 
   setChannelSystemDefaults: (successCallback, errorCallback, channelId)=>{
+    console.log("[PushPlugin] src/js/push.js setChannelSystemDefaults called, typeof(successCallback) = " +  typeof(successCallback) + ", typeof(errorCallback) = " + typeof(errorCallback) + ", typeof(channelId) = " + typeof(channelId));
     exec(successCallback, errorCallback, 'PushNotification', 'setChannelSystemDefaults', [channelId]);
   },
 
   setNotificationPreferences: (successCallback, errorCallback, preferences)=>{
+    console.log("[PushPlugin] src/js/push.js setNotificationPreferences called, typeof(successCallback) = " +  typeof(successCallback) + ", typeof(errorCallback) = " + typeof(errorCallback) + ", typeof(preferences) = " + typeof(preferences));
     exec(successCallback, errorCallback, 'PushNotification', 'setNotificationPreferences', [preferences]);
   },
 
-  getSavedNotifications: (successCallback, errorCallback, preferences)=>{
+  getSavedNotifications: (successCallback, errorCallback)=>{
+    console.log("[PushPlugin] src/js/push.js getSavedNotifications called, typeof(successCallback) = " +  typeof(successCallback) + ", typeof(errorCallback) = " + typeof(errorCallback));
     exec(successCallback, errorCallback, 'PushNotification', 'getSavedNotifications', []);
   },
 
-  removeSavedNotifications: (successCallback, errorCallback, preferences)=>{
+  removeSavedNotifications: (successCallback, errorCallback)=>{
+    console.log("[PushPlugin] src/js/push.js removeSavedNotifications called, typeof(successCallback) = " +  typeof(successCallback) + ", typeof(errorCallback) = " + typeof(errorCallback));
     exec(successCallback, errorCallback, 'PushNotification', 'removeSavedNotifications', []);
   },
 
   deleteInstanceId: (successCallback, errorCallback) => {
-    console.log("[PushPlugin] src/js/push.js deleteInstanceId called");
+    console.log("[PushPlugin] src/js/push.js deleteInstanceId called, typeof(successCallback) = " +  typeof(successCallback) + ", typeof(errorCallback) = " + typeof(errorCallback));
     exec(successCallback, errorCallback, 'PushNotification', 'deleteInstanceId', [channelId]);
   },
 
   playDefaultNotification: (successCallback, errorCallback) => {
-    console.log("[PushPlugin] src/js/push.js playDefaultNotification called");
+    console.log("[PushPlugin] src/js/push.js playDefaultNotification called, typeof(successCallback) = " +  typeof(successCallback) + ", typeof(errorCallback) = " + typeof(errorCallback));
     exec(successCallback, errorCallback, 'PushNotification', 'playDefaultNotification', []);
   },
 
   playDefaultRingtone: (successCallback, errorCallback) => {
-    console.log("[PushPlugin] src/js/push.js playDefaultRingtone called");
+    console.log("[PushPlugin] src/js/push.js playDefaultRingtone called, typeof(successCallback) = " +  typeof(successCallback) + ", typeof(errorCallback) = " + typeof(errorCallback));
     exec(successCallback, errorCallback, 'PushNotification', 'playDefaultRingtone', []);
   },
 
   playSoundFile: (successCallback, errorCallback, soundFile) => {
-    console.log("[PushPlugin] src/js/push.js playSoundFile called");
+    console.log("[PushPlugin] src/js/push.js playSoundFile called, typeof(successCallback) = " +  typeof(successCallback) + ", typeof(errorCallback) = " + typeof(errorCallback) + ", typeof(soundFile) = " + typeof(soundFile));
     exec(successCallback, errorCallback, 'PushNotification', 'playSoundFile', [soundFile]);
   },
 
   deleteChannel: (successCallback, errorCallback, channelId) => {
+    console.log("[PushPlugin] src/js/push.js deleteChannel called, typeof(successCallback) = " +  typeof(successCallback) + ", typeof(errorCallback) = " + typeof(errorCallback) + ", typeof(channelId) = " + typeof(channelId));
     exec(successCallback, errorCallback, 'PushNotification', 'deleteChannel', [channelId]);
   },
 
   listChannels: (successCallback, errorCallback) => {
+    console.log("[PushPlugin] src/js/push.js listChannels called, typeof(successCallback) = " +  typeof(successCallback) + ", typeof(errorCallback) = " + typeof(errorCallback));
     exec(successCallback, errorCallback, 'PushNotification', 'listChannels', []);
   },
 
