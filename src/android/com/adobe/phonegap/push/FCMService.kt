@@ -318,10 +318,10 @@ class FCMService : FirebaseMessagingService() {
 
     // BUILD NOTIFICATION:
     val packageName = context.packageName
-    val className = "$packageName.MainActivity"
-    val clazz = Class.forName(className)
+    val intent = context.packageManager.getLaunchIntentForPackage(packageName)?.apply {
+      flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    }
 
-    val intent = Intent(this, clazz::class.java)
     val pendingIntent: PendingIntent = PendingIntent.getActivity(
       context,
       0,
